@@ -1,0 +1,148 @@
+{extends "../@listView.xml"}
+{var $perPage = 6} {* Why 6? Check User::_abstractRelationGenerator *}
+
+{var $act = $_GET["act"] ?? "friends"}
+
+{if $act == "incoming"}
+    {var $iterator = iterator_to_array($user->getFollowers($page))}
+    {var $count    = $user->getFollowersCount()}
+{elseif $act == "outcoming"}
+    {var $iterator = iterator_to_array($user->getSubscriptions($page))}
+    {var $count    = $user->getSubscriptionsCount()}
+{else}
+    {var $iterator = iterator_to_array($user->getFriends($page))}
+    {var $count    = $user->getFriendsCount()}
+{/if}
+
+{block title}
+    {if $act == "incoming"}
+        {_"incoming_req"}
+    {elseif $act == "outcoming"}
+        {_"outcoming_req"}
+    {else}
+        {_"friends"}
+    {/if}
+{/block} 
+
+{block header}
+    {if isset($thisUser) && $thisUser->getId() == $user->getId()}
+        {_my_friends}
+    {else}
+        <a href="{$user->getURL()}">{$user->getCanonicalName()}</a> »
+        {if $act == "incoming"}
+            {_"incoming_req"}
+        {elseif $act == "outcoming"}
+            {_"outcoming_req"}
+        {else}
+            {_"friends"}
+        {/if}
+    {/if}
+{/block}
+
+{block tabs}
+    <div n:attr="id => ($act === 'friends' ? 'activetabs' : 'ki')" class="tab">
+        <a n:attr="id => ($act === 'friends' ? 'act_tab_a' : 'ki')" href="?">{_friends}</a>
+    </div>
+    <div n:attr="id => ($act === 'incoming' || $act === 'outcoming' ? 'activetabs' : 'ki')" class="tab">
+        <a n:attr="id => ($act === 'incoming' || $act === 'outcoming' ? 'act_tab_a' : 'ki')" href="?act=incoming">{_req}</a>
+    </div>
+{/block}
+
+{block size}
+    <div n:if="$act === 'incoming' || $act === 'outcoming'" class="mb_tabs">
+        <div n:attr="id => ($act === 'incoming' ? 'active' : 'ki')" class="mb_tab">
+            <div>
+                <a href="?act=incoming">{_incoming_req}</a>
+            </div>
+        </div>
+        <div n:attr="id => ($act === 'outcoming' ? 'active' : 'ki')" class="mb_tab">
+            <div>
+                <a href="?act=outcoming">{_outcoming_req}</a>
+            </div>
+        </div>
+    </div>
+    <div style="padding-bottom: 0px;" class="summaryBar">
+        <div class="summary">
+            {if !is_null($thisUser) && $user->getId() === $thisUser->getId()}
+                {if $act == "incoming"}
+                    {tr("req", $count)}
+                {elseif $act == "outcoming"}
+                    {tr("req", $count)}
+                {else}
+                    {tr("friends_list", $count)}
+                {/if}
+            {else}
+                {tr("friends", $count)}
+            {/if}
+        </div>
+    </div>
+{/block}
+
+{* BEGIN ELEMENTS DESCRIPTION *}
+
+{block link|strip|stripHtml}
+    {$x->getURL()}
+{/block}
+
+{block preview}
+    <img src="{$x->getAvatarUrl('miniscule')}" width="75" alt="Фотография пользователя" />
+{/block}
+
+{block name}
+    {$x->getCanonicalName()}
+{/block}
+
+{block description}
+    <table>
+        <tbody>
+            <tr>
+                <td width="120" valign="top"><span class="nobold">{_"gender"}: </span></td>
+                <td>{$x->isFemale() ? tr("female") : tr("male")}</td>
+            </tr>
+            <tr>
+                <td width="120" valign="top"><span class="nobold">{_"relationship"}:</span></td>
+                <td>{var $marialStatus = $x->getMaritalStatus()}{_"relationship_$marialStatus"}</td>
+            </tr>
+            <tr>
+                <td width="120" valign="top"><span class="nobold">{_"registration_date"}: </span></td>
+                <td>{$x->getRegistrationTime()}</td>
+            </tr>
+        </tbody>
+    </table>
+{/block}
+
+{block actions}
+    {if $x->getId() !== $thisUser->getId()}
+        {var $subStatus = $x->getSubscriptionStatus($thisUser)}
+        {if $subStatus === 0}
+            <form action="/setSub/user" method="post" class="profile_link_form">
+                <input type="hidden" name="act" value="add" />
+                <input type="hidden" name="id"  value="{$x->getId()}" />
+                <input type="hidden" name="hash" value="{$csrfToken}" />
+                <input type="submit" class="profile_link" value="{_"friends_add"}" />
+            </form>
+        {elseif $subStatus === 1}
+            <form action="/setSub/user" method="post" class="profile_link_form">
+                <input type="hidden" name="act" value="add" />
+                <input type="hidden" name="id"  value="{$x->getId()}" />
+                <input type="hidden" name="hash" value="{$csrfToken}" />
+                <input type="submit" class="profile_link" value="{_"friends_accept"}" />
+            </form>
+        {elseif $subStatus === 2}
+            <form action="/setSub/user" method="post" class="profile_link_form">
+                <input type="hidden" name="act" value="rem" />
+                <input type="hidden" name="id"  value="{$x->getId()}" />
+                <input type="hidden" name="hash" value="{$csrfToken}" />
+                <input type="submit" class="profile_link" value="{_"friends_reject"}" />
+            </form>
+        {elseif $subStatus === 3}
+            <a href="/im?sel={$x->getId()}" class="profile_link">{_"send_message"}</a>
+            <form action="/setSub/user" method="post" class="profile_link_form">
+                <input type="hidden" name="act" value="rem" />
+                <input type="hidden" name="id"  value="{$x->getId()}" />
+                <input type="hidden" name="hash" value="{$csrfToken}" />
+                <input type="submit" class="profile_link" value="{_"friends_delete"}" />
+            </form>
+        {/if}
+    {/if}
+{/block}

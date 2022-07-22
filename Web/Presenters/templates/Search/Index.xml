@@ -1,0 +1,88 @@
+{extends "../@listView.xml"}
+
+{block title}
+    {if $type === "users"}
+        {tr("search_for_people")}
+    {else}
+        {tr("search_for_groups")}
+    {/if}
+    {if $_GET['query']}
+        - {$_GET['query']}
+    {/if}
+{/block}
+
+{block header}
+    {=OPENVK_ROOT_CONF["openvk"]["appearance"]["name"]} »
+    {if $type === "users"}
+        {tr("search_for_people")}
+    {else}
+        {tr("search_for_groups")}
+    {/if}
+{/block}
+
+{* BEGIN ELEMENTS DESCRIPTION *}
+
+{block tabs}
+    <div {if $type === "users"}id="activetabs"{/if} class="tab">
+        <a {if $type === "users"}id="act_tab_a"{/if} href="/search?type=users{if $_GET['query']}&query={urlencode($_GET['query'])}{/if}">
+            {_users}
+        </a>
+    </div>
+    <div {if $type === "groups"}id="activetabs"{/if} class="tab">
+        <a {if $type === "groups"}id="act_tab_a"{/if} href="/search?type=groups{if $_GET['query']}&query={urlencode($_GET['query'])}{/if}">
+            {_groups}
+        </a>
+    </div>
+</div>
+<form class="header_search_inputbt">
+    <input name="type" type="hidden" value="{$type ?? 'users'}" />
+    <input name="query" class="header_search_input" placeholder="{_search_placeholder}" value="{$_GET['query'] ?? ''}" />
+    <button class="button_search">{_search_button}</button>
+</form>
+
+<p style="margin-left: 15px; margin-top: 0;">
+    <b>{tr("results", $count)}</b>
+</p>
+<div>
+{/block}
+
+{block link|strip|stripHtml}
+    {$x->getURL()}
+{/block}
+
+{block preview}
+    <img src="{$x->getAvatarUrl('miniscule')}" width="75" alt="{_"photo"}" />
+{/block}
+
+{block name}
+    <text style="overflow: hidden;">&nbsp;{$x->getCanonicalName()}</text>
+{/block}
+
+{block description}
+    <table class="ugc-table">
+        <tbody>
+            {if $type === "users"}
+                <tr>
+                    <td><span class="nobold">{_"gender"}: </span></td>
+                    <td>{$x->isFemale() ? tr("female") : tr("male")}</td>
+                </tr>
+                <tr>
+                    <td><span class="nobold">{_"relationship"}:</span></td>
+                    <td>{var $marialStatus = $x->getMaritalStatus()}{_"relationship_$marialStatus"}</td>
+                </tr>
+                <tr>
+                    <td><span class="nobold">{_"registration_date"}: </span></td>
+                    <td>{$x->getRegistrationTime()}</td>
+                </tr>
+            {/if}
+            <tr>
+                <td>
+                    <span class="nobold">{_"description"}:</span>
+                </td>
+                <td>
+                    {$x->getDescription() ?? '(' . tr("none") . ')'}
+                </td>
+            </tr>
+        </tbody>
+    </table>
+{/block}
