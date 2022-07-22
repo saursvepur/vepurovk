@@ -269,7 +269,7 @@
                 <a href="/language" class="link">{_footer_choose_language}</a>
                 <a href="/privacy" class="link">{_footer_privacy}</a>
             </div>
-            <p>VepurOVK this a <a href="/about:openvk">OpenVK </a>|<a href="https://saursvepur.xyz/"> saursvepur </a>| PHP: {phpversion()} | DB: {$dbVersion}</p>
+            <p>VepurOVK is an <a href="/about:openvk">OpenVK </a>|<a href="https://saursvepur.xyz/"> saursvepur </a>| PHP: {phpversion()} | DB: {$dbVersion}</p>
             <p n:ifcontent>
                 {php echo OPENVK_ROOT_CONF["openvk"]["appearance"]["motd"]}
             </p>
