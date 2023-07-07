@@ -1,0 +1,26 @@
+{extends "../@layout.xml"}
+{block title}{_upload_photo}{/block}
+
+{block header}
+    <a href="{$thisUser->getURL()}">{$thisUser->getCanonicalName()}</a>
+    » 
+    <a href="/albums{$thisUser->getId()}">{_albums}</a>
+    » 
+    <a href="/album{$album->getPrettyId()}">{$album->getName()}</a>
+    » 
+    {_upload_photo}
+{/block}
+
+{block content}
+    <label class="button" style="">{_select_photos}
+      <input type="file" id="blob" name="blob[]" style="display: none;" onchange="multifileDescs()" accept=".jpg,.png,.gif" multiple/>
+    </label>
+    <table cellspacing="6">
+      <tbody id="filesDescs">
+        <tr>
+        </tr>
+      </tbody>
+    </table>
+      <br><br>
+    <input type="button" onclick="uploadPictures('{$_GET['album']}')" class="button" id="uploadButton" name="submit" value="{_upload}" disabled />
+{/block}

@@ -1,0 +1,13 @@
+{extends "@layout.xml"}
+
+{block title}
+    {_admin_overview_summary}
+{/block}
+
+{block heading}
+    {_admin_overview_summary}
+{/block}
+
+{block content}
+    ┬─┬︵/(.□.)╯
+{/block}

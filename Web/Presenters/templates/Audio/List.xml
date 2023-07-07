@@ -1,0 +1,33 @@
+{extends "../@layout.xml"}
+{var $iterator = $audios}
+{var $count    = $paginatorConf->count}
+{var $page     = $paginatorConf->page}
+{css "css/style.css"}
+
+{block title}
+    {_"audios"} 
+{/block}
+
+{block header}
+        WebAmp Radio
+    	<div style="float: right;">
+        <span>
+            <b>
+                    {_"undergoing_section_maintenance"}
+            </b>
+        </span>
+    </div>		
+{/block}    
+    
+{block content}
+ 
+<iframe id="appFrame" referrerpolicy="unsafe-url" sandbox="allow-scripts" frameborder="0" src="https://cdn.revite.online/webamp/" height="600" width="600"></iframe>
+
+<div id="news">
+        <h4>Радиостанции на любой вкус.</h4>
+        <div id="app_news_container">
+            <p><a href="/id18"><img src="https://vepurovk.xyz/blob_19/19fe918148b293b4da66fc7969c1b46af23e2c154452223604b146a1fbd8417f8d5f3df34eb4afa452d08e1a48886ca47c7492fa4b67207b446f5f2bd4db0cc7.jpeg" alt="19fe918148b293b4da66fc7969c1b46af23e2c154452223604b146a1fbd8417f8d5f3df34eb4afa452d08e1a48886ca47c7492fa4b67207b446f5f2bd4db0cc7.jpeg"></a></p>
+        </div>
+    </div>
+
+{/block}

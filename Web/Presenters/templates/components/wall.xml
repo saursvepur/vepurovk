@@ -1,0 +1,31 @@
+<div class="content_divider">
+    <div class="content_title_expanded" onclick="hidePanel(this);">
+        {_wall} 
+        <nobold>
+            {tr("wall", $count)}
+            <a href="/wall{$owner}" class="float-right lowercase">{_all_title}</a>
+        </nobold>
+    </div>
+    <div>
+        <div n:if="$canPost" class="content_subtitle">
+            {include "../components/textArea.xml", route => "/wall$owner/makePost", graffiti => true, polls => true, notes => true}
+        </div>
+        
+        <div class="content">
+            {if sizeof($posts) > 0}
+                {foreach $posts as $post}
+                    <a name="postGarter={$post->getId()}"></a>
+                    
+                    {include "../components/post.xml", post => $post, commentSection => true}
+                {/foreach}
+                {include "../components/paginator.xml", conf => $paginatorConf}
+            {else}
+                {_no_posts_abstract}
+            {/if}
+        </div>
+    </div>
+</div>
+
+{if isset($thisUser) && $thisUser->hasMicroblogEnabled()}
+    {script "js/al_comments.js"}
+{/if}

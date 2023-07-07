@@ -1,0 +1,182 @@
+{var $instance_name = OPENVK_ROOT_CONF['openvk']['appearance']['name']}
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+    <head>
+        <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=utf-8" />
+        <style>
+            {var $css = file_get_contents(OPENVK_ROOT . "/Web/static/js/node_modules/@atlassian/aui/dist/aui/aui-prototyping.css")}
+            {str_replace("fonts/", "/assets/packages/static/openvk/js/node_modules/@atlassian/aui/dist/aui/fonts/", $css)|noescape}
+			{file_get_contents(OPENVK_ROOT . "/Web/static/js/node_modules/@atlassian/aui/dist/aui/aui-prototyping-darkmode.css")|noescape}
+        </style>
+        <title>{include title} - {_admin} {$instance_name}</title>
+    </head>
+    <body>
+        <div id="page">
+            <header id="header" role="banner">
+                <nav class="aui-header aui-dropdown2-trigger-group" role="navigation">
+                    <div class="aui-header-inner">
+                        <div class="aui-header-primary">
+                            <h1 id="logo" class="aui-header-logo aui-header-logo-textonly">
+                                <a href="/admin">
+                                    <span class="aui-header-logo-device">{$instance_name}</span>
+                                </a>
+                            </h1>
+                        </div>
+                        <div class="aui-header-secondary">
+                            <ul class="aui-nav">
+                                <li n:if="$search ?? false">
+                                    <form class="aui-quicksearch dont-default-focus ajs-dirty-warning-exempt">
+                                        <input id="quickSearchInput" autocomplete="off" class="search" type="text" placeholder="{include searchTitle}" value="{$_GET['q'] ?? ''}" name="q" accesskey="Q" />
+                                        <input type="hidden" value=1 name=p />
+                                    </form>
+                                </li>
+                                <li>
+                                    <aui-toggle id="switch-theme" label="Toggle dark mode"></aui-toggle>
+                                    <script>
+                                        const toggle = document.getElementById("switch-theme");
+                                        let currentTheme = localStorage.getItem("ovkadmin-theme");
+
+                                        if (currentTheme == null) {
+                                            const preferDarkScheme = window.matchMedia("(prefers-color-scheme: dark)");
+                                            let theme = "light";
+
+                                            if (preferDarkScheme.matches) {
+                                                theme = "dark";
+                                                document.body.classList.add("aui-theme-dark");
+                                            }
+
+                                            localStorage.setItem("ovkadmin-theme", theme);
+                                        }
+
+                                        if (currentTheme == "dark") {
+                                            document.body.classList.add("aui-theme-dark");
+                                        }
+
+                                        toggle.addEventListener("click", function() {
+                                            document.body.classList.toggle("aui-theme-dark");
+
+                                            let theme = "light";
+
+                                            if (document.body.classList.contains("aui-theme-dark")) {
+                                                theme = "dark";
+                                            }
+
+                                            localStorage.setItem("ovkadmin-theme", theme);
+                                        });
+                                    </script>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </nav>
+            </header>
+            <div class="aui-page-panel">
+                <div class="aui-page-panel-inner">
+                    <div class="aui-page-panel-nav">
+                        <nav class="aui-navgroup aui-navgroup-vertical">
+                            <div class="aui-navgroup-inner">
+                                <div class="aui-navgroup-primary">
+                                    <div class="aui-nav-heading">
+                                        <strong>{_admin_overview}</strong>
+                                    </div>
+                                    <ul class="aui-nav">
+                                        <li>
+                                            <a href="/admin">{_admin_overview_summary}</a>
+                                        </li>
+                                    </ul>
+                                    <div class="aui-nav-heading">
+                                        <strong>{_admin_content}</strong>
+                                    </div>
+                                    <ul class="aui-nav">
+                                        <li>
+                                            <a href="/admin/users">{_users}</a>
+                                        </li>
+                                        <li>
+                                            <a href="/admin/clubs">{_groups}</a>
+                                        </li>
+										<li>
+                                            <a href="/admin/bannedLinks">{_admin_banned_links}</a>
+                                        </li>
+                                    </ul>
+									<div class="aui-nav-heading">
+                                        <strong>Chandler</strong>
+                                    </div>
+                                    <ul class="aui-nav">
+                                        <li>
+                                            <a href="/admin/chandler/groups">{_c_groups}</a>
+                                        </li>
+                                    </ul>
+                                    <div class="aui-nav-heading">
+                                        <strong>{_admin_services}</strong>
+                                    </div>
+                                    <ul class="aui-nav">
+                                        <li>
+                                            <a href="/admin/vouchers">{_vouchers}</a>
+                                        </li>
+                                        <li>
+                                            <a href="/admin/gifts">{_gifts}</a>
+                                        </li>
+                                    </ul>
+                                    <div class="aui-nav-heading">
+                                        <strong>{_admin_about}</strong>
+                                    </div>
+                                    <ul class="aui-nav">
+                                        <li>
+                                            <a href="/about:openvk">{_admin_about_version}</a>
+                                        </li>
+                                        <li>
+                                            <a href="/about">{_admin_about_instance}</a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </nav>
+                    </div>
+                    <section class="aui-page-panel-content">
+                        {ifset $flashMessage}
+                            {var $type = ["err" => "error", "warn" => "warning", "info" => "basic", "succ" => "success"][$flashMessage->type]}
+                            <div class="aui-message aui-message-{$type}" style="margin-bottom: 15px;">
+                                <p class="title">
+                                    <strong>{$flashMessage->title}</strong>
+                                </p>
+                                <p>{$flashMessage->msg|noescape}</p>
+                            </div>
+                        {/ifset}
+
+                        {ifset preHeader}
+                            {include preHeader}
+                        {/ifset}
+
+                        <header class="aui-page-header">
+                            <div class="aui-page-header-inner">
+                                <div class="aui-page-header-main">
+                                    {ifset headingWrap}
+                                        {include headingWrap}
+                                    {else}
+                                        <h1>{include heading}</h1>
+                                    {/ifset}
+                                </div>
+                            </div>
+                        </header>
+                        <main>
+                            {include content}
+                        </main>
+                    </section>
+                </div>
+            </div>
+            <footer id="footer" role="contentinfo">
+                <section class="footer-body">
+                    VepurOVK <a href="/about:openvk"></a> | PHP: {phpversion()} | DB: {\Chandler\Database\DatabaseConnection::i()->getConnection()->getPdo()->getAttribute(\PDO::ATTR_SERVER_VERSION)}
+                </section>
+            </footer>
+        </div>
+
+        {script "js/node_modules/jquery/dist/jquery.min.js"}
+        {script "js/node_modules/@atlassian/aui/dist/aui/aui-prototyping.js"}
+        <script>AJS.tabs.setup();</script>
+
+        {ifset scripts}
+            {include scripts}
+        {/ifset}
+    </body>
+</html>
