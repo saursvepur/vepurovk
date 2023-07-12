@@ -218,6 +218,35 @@
                                 <div n:if="$thisUser->getPinnedClubCount() > 0" class="menu_divider"></div>
                                 <a n:foreach="$thisUser->getPinnedClubs() as $club" href="{$club->getURL()}" class="link group_link">{$club->getName()}</a>
                             </div>
+
+                            {var $birthdays = iterator_to_array($thisUser->getBirthdays())}
+                            {var $birthdaysCount = sizeof($birthdays)}
+                            {var $birthdaysTomorrow = iterator_to_array($thisUser->getBirthdaysTomorrow())}
+                            {var $birthdaysTomorrowCount = sizeof($birthdaysTomorrow)}
+
+                            {if $birthdaysCount + $birthdaysTomorrowCount > 0}
+                                <div id="birthdays">
+                                    <b>{_reminder} </b>
+                                    <hr size="1">
+                                    {if $birthdaysCount > 0}
+                                        {_today_bdays}
+                                        {foreach $birthdays as $bday}
+                                            <a href="/id{$bday->getId()}">{$bday->getCanonicalName()}</a>
+                                            {if $bday !== end($birthdays)},{/if}
+                                        {/foreach}
+                                    {/if}
+
+                                    {if $birthdaysCount > 0 && $birthdaysTomorrowCount > 0}<br><br>{/if}
+
+                                    {if $birthdaysTomorrowCount > 0}
+                                        {_tomorrow_bdays}
+                                        {foreach $birthdaysTomorrow as $bday}
+                                            <a href="/id{$bday->getId()}">{$bday->getCanonicalName()}</a>
+                                            {if $bday !== end($birthdaysTomorrow)},{/if}
+                                        {/foreach}
+                                    {/if}
+                                </div>
+                            {/if}
                             
                             <div n:if="OPENVK_ROOT_CONF['openvk']['preferences']['commerce'] && $thisUser->getCoins() != 0" id="votesBalance">
                                 {tr("you_still_have_x_points", $thisUser->getCoins())|noescape}
