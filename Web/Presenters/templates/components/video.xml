@@ -4,7 +4,7 @@
 <tbody>
     <tr>
         <td valign="top">
-            <div class="video-preview">
+            <div class="video-preview" id="videoOpen" data-id="{$video->getId()}">
                 <a href="/video{$video->getPrettyId()}">
                     <img src="{$video->getThumbnailURL()}"
                     style="max-width: 170px; max-height: 127px; margin: auto;" >
@@ -16,7 +16,7 @@
             {include infotable, x => $dat}
         {else}
         <a href="/video{$video->getPrettyId()}">
-            <b>
+            <b id="videoOpen" data-id="{$video->getId()}">
             {$video->getName()}
             </b>
         </a>
@@ -27,7 +27,7 @@
             <span style="color: grey;">{_video_uploaded} {$video->getPublicationTime()}</span><br/>
 
             <p>
-                <a href="/video{$video->getPrettyId()}">{_view_video}</a>
+                <a href="/video{$video->getPrettyId()}" id="videoOpen" data-id="{$video->getId()}">{_view_video}</a>
                 {if $video->getCommentsCount() > 0}| <a href="/video{$video->getPrettyId()}#comments">{_comments} ({$video->getCommentsCount()})</a>{/if}
             </p>
             {/ifset}

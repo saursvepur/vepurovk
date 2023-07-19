@@ -17,10 +17,12 @@
     </label>
     <table cellspacing="6">
       <tbody id="filesDescs">
-        <tr>
-        </tr>
       </tbody>
     </table>
       <br><br>
-    <input type="button" onclick="uploadPictures('{$_GET['album']}')" class="button" id="uploadButton" name="submit" value="{_upload}" disabled />
+    <input type="button" onclick="uploadPictures('{$_GET['album']}')" style="user-select: none;" class="button" id="uploadButton" name="submit" value="{_upload}" disabled />
+    <script>
+      blob.value = ''
+      uploadButton.setAttribute("disabled", "disabled")
+    </script>
 {/block}

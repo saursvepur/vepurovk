@@ -45,6 +45,13 @@ class Videos
     {
         return sizeof($this->videos->where("owner", $user->getId())->where(["deleted" => 0, "unlisted" => 0]));
     }
+
+    function getLastVideo(User $user)
+    {
+        $video = $this->videos->where("owner", $user->getId())->where(["deleted" => 0, "unlisted" => 0])->order("id DESC")->fetch();
+
+        return new Video($video);
+    }
 	
 	function find(string $query = "", array $pars = [], string $sort = "id"): Util\EntityStream
     {

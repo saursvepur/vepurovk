@@ -119,7 +119,7 @@ class Note extends Postable
         return $this->getRecord()->source;
     }
 	
-	function toVkApiStruct(): object
+	function toVkApiStruct(?User $user = NULL): object
     {
         $res = (object) [];
         
@@ -135,6 +135,11 @@ class Note extends Postable
         $res->privacy_view  = 1;
         $res->can_comment   = 1;
         $res->text_wiki     = "r";
+
+        if(!is_null($user)) {
+            $res->likes         = $this->getLikesCount();
+            $res->user_likes    = (bool)$this->hasLikeFrom($user);
+        }
 
         return $res;
     }
