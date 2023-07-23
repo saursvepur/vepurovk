@@ -35,6 +35,11 @@ final class Polls extends VKAPIRequestHandler
         foreach($poll->getUserVote($this->getUser()) as $vote)
             $userVote[] = $vote[0];
 
+         $ownerr = 0;
+        if(!is_null($poll->getAttachedPost())) {
+            $ownerr = $poll->getAttachedPost()->getOwner() instanceof User ? $poll->getAttachedPost()->getOwner()->getId() : $poll->getAttachedPost()->getOwner()->getId() * -1;
+        }
+
         $response = [
             "multiple"       => $poll->isMultipleChoice(),
             "end_date"       => $poll->endsAt() == NULL ? 0 : $poll->endsAt()->timestamp(),
@@ -44,16 +49,16 @@ final class Polls extends VKAPIRequestHandler
             "can_vote"       => $poll->canVote($this->getUser()),
             "can_report"     => false,
             "can_share"      => true,
-            "created"        => 0,
+            "created"        => $poll->getAttachedPost() ? $poll->getAttachedPost()->getPublicationTime()->timestamp() : 0,
             "id"             => $poll->getId(),
-            "owner_id"       => $poll->getOwner()->getId(),
+            "owner_id"       => $ownerr,
             "question"       => $poll->getTitle(),
             "votes"          => $poll->getVoterCount(),
             "disable_unvote" => $poll->isRevotable(),
             "anonymous"      => $poll->isAnonymous(),
             "answer_ids"     => $userVote,
             "answers"        => $answers,
-            "author_id"      => $poll->getOwner()->getId(),
+            "author_id"      => $ownerr,
         ];
 
         if ($extended) {
