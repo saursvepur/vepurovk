@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 namespace openvk\VKAPI\Handlers;
 use openvk\Web\Models\Entities\User;
-use openvk\Web\Models\Entities\Notifications\{WallPostNotification, RepostNotification, CommentNotification};
+use openvk\Web\Models\Entities\Notifications\{WallPostNotification, NewSuggestedPostsNotification, RepostNotification, CommentNotification};
 use openvk\Web\Models\Repositories\Users as UsersRepo;
 use openvk\Web\Models\Entities\Club;
 use openvk\Web\Models\Repositories\Clubs as ClubsRepo;
@@ -60,7 +60,7 @@ final class Wall extends VKAPIRequestHandler
             # В апи, походу, нету метода, который бы публиковал запись из предложки
             case "suggests":
                 if($owner_id < 0) {
-                    if($wallOnwer->canBeModifiedBy($this->getUser())) {
+                    if($wallOwner->canBeModifiedBy($this->getUser())) {
                         $iteratorv = $posts->getSuggestedPosts($owner_id * -1, 1, $count, $offset);
                         $cnt       = $posts->getSuggestedPostsCount($owner_id * -1);
                     } else {
@@ -580,6 +580,18 @@ final class Wall extends VKAPIRequestHandler
             (new WallPostNotification($wallOwner, $post, $this->user->identity))->emit();
 
         if($owner_id < 0 && !$wallOwner->canBeModifiedBy($this->getUser()) && $wallOwner->getWallType() == 2) {
+            $suggsCount = (new PostsRepo)->getSuggestedPostsCount($wallOwner->getId());
+
+            if($suggsCount % 10 == 0) {
+                $managers = $wallOwner->getManagers();
+                $owner = $wallOwner->getOwner();
+                (new NewSuggestedPostsNotification($owner, $wallOwner))->emit();
+
+                foreach($managers as $manager) {
+                    (new NewSuggestedPostsNotification($manager->getUser(), $wallOwner))->emit();
+                }
+            }
+
             return (object)["post_id" => "on_view"];
         }    
 
