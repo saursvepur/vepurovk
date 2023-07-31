@@ -65,7 +65,7 @@
                 </div>
                 <div class="post-content" id="{$post->getPrettyId()}">
                     <div class="text" id="text{$post->getPrettyId()}">
-                        {$post->getText()|noescape}
+                        <span class="really_text">{$post->getText()|noescape}</span>
                         
                         {var $width = ($GLOBALS["_bigWall"] ?? false) ? 550 : 320}
                         {if isset($GLOBALS["_nesAttGloCou"])}
@@ -88,6 +88,9 @@
                         <br/>
                         &nbsp;! Этот пост был размещён за взятку.
                     </div>
+                    <div n:if="!is_null($post->getSource())" class="sourceDiv">
+                        <span>{_source}: {$post->getSource(true)|noescape}</span>
+                    </div>
                     <div n:if="$post->isSigned()" class="post-signature">
                         {var $actualAuthor = $post->getOwner(false)}
                         <span>
@@ -99,7 +102,7 @@
                     </div>
                 </div>
                 <div class="post-menu" n:if="$compact == false">
-                    <a href="/wall{$post->getPrettyId()}" class="date">{$post->getPublicationTime()}</a>
+                    <a href="{if !$suggestion}/wall{$post->getPrettyId()}{else}javascript:void(0){/if}" class="date">{$post->getPublicationTime()}</a>
 					<a n:if="!empty($platform)" class="client_app" data-app-tag="{$platform}" data-app-name="{$platformDetails['name']}" data-app-url="{$platformDetails['url']}" data-app-img="{$platformDetails['img']}">
                         <img src="/assets/packages/static/openvk/img/app_icons_mini/{$post->getPlatform(this)}.svg">
                     </a>
@@ -134,6 +137,10 @@
                         {var $club = is_null($club) ? ($post->getTargetWall() < 0 ? (new openvk\Web\Models\Repositories\Clubs)->get(abs($post->getTargetWall())) : NULL) : $club}
                         {include "../textArea.xml", route => $commentsURL, postOpts => false, graffiti => (bool) ovkGetQuirk("comments.allow-graffiti"), post => $post, club => $club}
                     </div>
+                </div>
+                <div n:if="$suggestion && $post->canBePinnedBy($thisUser ?? NULL)" class="suggestionControls">
+                    <input type="button" class="button" id="publish_post" data-id="{$post->getId()}" value="{_publish_suggested}">
+                    <input type="button" class="button" id="decline_post" data-id="{$post->getId()}" value="{_decline_suggested}">
                 </div>
             </td>
         </tr>

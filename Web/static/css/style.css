@@ -709,6 +709,7 @@ h4 {
 	height: calc(100% - 4px);
 	width: -webkit-fit-content;
     image-rendering: -webkit-optimize-contrast;
+    object-fit: cover;
 }
 
 .post-content .media_makima {
@@ -1424,6 +1425,34 @@ body.scrolled .toTop:hover {
     background-color: #f5e9ec;
     position: fixed;
     font-weight: bold;
+}
+
+.sugglist {
+    padding-bottom: 5px;
+    padding-top: 5px;
+    margin-bottom: -5px;
+    padding-left: 9px;
+    border-top: 1px solid gray;
+    background-color: #e6e6e6;
+    margin-top: 5px;
+}
+
+.sugglist a {
+    color: #626262;
+}
+
+.suggestionControls {
+    text-align: center;
+}
+
+.sourceDiv {
+    margin-top: 3px;
+    margin-left: 4px;
+}
+
+.sourceDiv span {
+    color:grey;
+    font-size: 11px;
 }
 
 .post-upload, .post-has-poll, .post-has-note {

@@ -442,6 +442,88 @@ async function showArticle(note_id) {
     u("body").addClass("article");
 }
 
+$(document).on("click", "#publish_post", async (e) => {
+    let id = Number(e.currentTarget.dataset.id)
+    let post;
+    let body = `
+        <textarea id="pooblish" style="max-height:500px;resize:vertical;min-height:54px;"></textarea>
+        <label><input type="checkbox" id="signatr" checked>${tr("add_signature")}</label>
+    `
+
+    MessageBox(tr("publishing_suggested_post"), body, [tr("publish"), tr("cancel")], [(async () => {
+        let id = Number(e.currentTarget.dataset.id)
+        let post;
+
+        try {
+            post = await API.Wall.acceptPost(id, document.getElementById("signatr").checked, document.getElementById("pooblish").value)
+        } catch(ex) {
+            switch(ex.code) {
+                case 11:
+                    MessageBox(tr("error"), tr("error_declining_invalid_post"), [tr("ok")], [Function.noop]);
+                    break;
+                case 19:
+                    MessageBox(tr("error"), tr("error_declining_not_suggested_post"), [tr("ok")], [Function.noop]);
+                    break;
+                case 10:
+                    MessageBox(tr("error"), tr("error_declining_declined_post"), [tr("ok")], [Function.noop]);
+                    break;
+                case 22:
+                    MessageBox(tr("error"), "Access denied", [tr("ok")], [Function.noop]);
+                    break;
+                default:
+                    MessageBox(tr("error"), "Unknown error "+ex.code+": "+ex.message, [tr("ok")], [Function.noop]);
+                    break;
+            }
+
+            return 0;
+        }
+
+        NewNotification(tr("suggestion_succefully_published"), tr("suggestion_press_to_go"), null, () => {window.location.assign("/wall" + post.id)});
+        document.getElementById("cound").innerHTML = tr("x_suggested_posts_in_group", post.new_count)
+        e.currentTarget.parentNode.parentNode.parentNode.parentNode.parentNode.outerHTML = ""
+    }), Function.noop]);
+
+    document.getElementById("pooblish").innerHTML = e.currentTarget.parentNode.parentNode.parentNode.parentNode.parentNode.querySelector(".really_text").innerHTML
+    document.querySelector(".ovk-diag-body").style.padding = "9px";
+})
+
+$(document).on("click", "#decline_post", async (e) => {
+    let id = Number(e.currentTarget.dataset.id)
+    let post;
+
+    try {
+        e.currentTarget.parentNode.parentNode.insertAdjacentHTML("afterbegin", `<img id="deleteMe" src="/assets/packages/static/openvk/img/loading_mini.gif">`)
+        post = await API.Wall.declinePost(id)
+    } catch(ex) {
+        switch(ex.code) {
+            case 11:
+                MessageBox(tr("error"), tr("error_declining_invalid_post"), [tr("ok")], [Function.noop]);
+                break;
+            case 19:
+                MessageBox(tr("error"), tr("error_declining_not_suggested_post"), [tr("ok")], [Function.noop]);
+                break;
+            case 10:
+                MessageBox(tr("error"), tr("error_declining_declined_post"), [tr("ok")], [Function.noop]);
+                break;
+            case 22:
+                MessageBox(tr("error"), "Access denied", [tr("ok")], [Function.noop]);
+                break;
+            default:
+                MessageBox(tr("error"), "Unknown error "+ex.code+": "+ex.message, [tr("ok")], [Function.noop]);
+                break;
+        }
+
+        return 0;
+    } finally {
+        u("#deleteMe").remove()
+    }
+
+    // ребята, приключений час
+    NewNotification(tr("suggestion_succefully_declined"), "", null);
+    e.currentTarget.parentNode.parentNode.parentNode.parentNode.parentNode.outerHTML = ""
+    document.getElementById("cound").innerHTML = tr("x_suggested_posts_in_group", post)
+})
+
 // pornhub window player
 
 $(document).on("click", "#videoOpen", async (e) => {
@@ -783,6 +865,20 @@ $(document).on("click", "#showComments", async (e) => {
     } else {
         document.querySelector(".bottom-part").style.display = "none"
         e.currentTarget.innerHTML = tr("show_comments")
+    }
+})
+
+if(document.querySelector("input[name='set_source']") != null) {
+    document.querySelector("input[name='set_source']").checked = false
+}
+
+$(document).on("change", "input[name='set_source']", (e) => {
+    if(e.currentTarget.checked) {
+        document.getElementById("sourceSet").style.display = "block"
+        e.currentTarget.parentNode.querySelector("span").innerHTML = tr("source") + ":"
+    } else {
+        document.getElementById("sourceSet").style.display = "none"
+        e.currentTarget.parentNode.querySelector("span").innerHTML = tr("set_source")
     }
 })
 

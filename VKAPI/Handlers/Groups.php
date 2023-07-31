@@ -11,28 +11,20 @@ final class Groups extends VKAPIRequestHandler
         $this->requireUser();
 
         if($user_id == 0) {
-            foreach($this->getUser()->getClubs($offset, false, $count, true) as $club)
-                $clbs[] = $club;
-            $clbsCount = $this->getUser()->getClubCount();
+        	foreach($this->getUser()->getClubs($offset, false, $count, true) as $club)
+        		$clbs[] = $club;
+        	$clbsCount = $this->getUser()->getClubCount();
         } else {
-            $users = new UsersRepo;
-            $user  = $users->get($user_id);
+        	$users = new UsersRepo;
+        	$user  = $users->get($user_id);
 
-            if(is_null($user) || $user->isDeleted() || $user->isBanned())
-                $this->fail(15, "Invalid user");
+        	if(is_null($user))
+        		$this->fail(15, "Access denied");
 
-            if(!$user->getPrivacyPermission("groups.read", $this->getUser() ?? NULL)) {
-                $this->fail(8, "Access denied: this user chose to hide his groups.");
-            }
+        	foreach($user->getClubs($offset, false, $count, true) as $club)
+        		$clbs[] = $club;
 
-            if(!$user->canBeViewedBy($this->getUser())) {
-                $this->fail(8, "Access denied");
-            }
-
-            foreach($user->getClubs($offset, false, $count, true) as $club)
-                $clbs[] = $club;
-
-            $clbsCount = $user->getClubCount();
+        	$clbsCount = $user->getClubCount();
         }
         
         $rClubs;
@@ -44,7 +36,7 @@ final class Groups extends VKAPIRequestHandler
         if(!empty($clbs)) {
             for($i=0; $i < $ic; $i++) { 
                 $usr = $clbs[$i];
-                if(is_null($usr) || $usr->isDeleted()) { 
+                if(is_null($usr)) { 
 
                 } else {
                     $rClubs[$i] = (object) [
@@ -98,8 +90,8 @@ final class Groups extends VKAPIRequestHandler
         }
 
         return (object) [
-            "count" => $clbsCount,
-            "items" => $rClubs
+        	"count" => $clbsCount,
+        	"items" => $rClubs
         ];
     }
 
@@ -109,20 +101,20 @@ final class Groups extends VKAPIRequestHandler
            not in your app or script, since it's not oficially documented by VK */
 
         $clubs = new ClubsRepo;
-        
+		
         if(empty($group_ids) && !empty($group_id)) 
             $group_ids = $group_id;
         
         if(empty($group_ids) && empty($group_id))
             $this->fail(100, "One of the parameters specified was missing or invalid: group_ids is undefined");
-        
+		
         $clbs = explode(',', $group_ids);
         $response = array();
 
         $ic = sizeof($clbs);
 
         if(sizeof($clbs) > $count)
-            $ic = $count;
+			$ic = $count;
 
         $clbs = array_slice($clbs, $offset * $count);
 
@@ -143,23 +135,6 @@ final class Groups extends VKAPIRequestHandler
                     "type"        => "group",
                     "description" => "This group was deleted or it doesn't exist"
                 ];   
-            } else if($clb->isBanned()) {
-                $response[$i] = (object)[
-                    "id"          => (int)($clbs[$i]),
-                    "name"        => $clb->getName(),
-                    "screen_name" => "club".(int)($clbs[$i]),
-                    "type"        => "group",
-                    "description" => "This group was banned",
-                    "reason"      => $clb->getBanReason()
-                ];   
-            } else if($clb->isDeleted()) {
-                $response[$i] = (object)[
-                    "id"          => (int)($clbs[$i]),
-                    "name"        => $clb->getName(),
-                    "screen_name" => "club".(int)($clbs[$i]),
-                    "type"        => "group",
-                    "description" => "This group was deleted"
-                ];   
             } else if($clbs[$i] == NULL) {
 
             } else {
@@ -177,18 +152,18 @@ final class Groups extends VKAPIRequestHandler
 
                 foreach($flds as $field) { 
                     switch($field) {
-                        case "verified":
-                            $response[$i]->verified = intval($clb->isVerified());
-                            break;
-                        case "has_photo":
-                            $response[$i]->has_photo = is_null($clb->getAvatarPhoto()) ? 0 : 1;
-                            break;
-                        case "photo_max_orig":
-                            $response[$i]->photo_max_orig = $clb->getAvatarURL();
-                            break;
-                        case "photo_max":
-                            $response[$i]->photo_max = $clb->getAvatarURL();
-                            break;
+			            case "verified":
+			                $response[$i]->verified = intval($clb->isVerified());
+			                break;
+			            case "has_photo":
+			                $response[$i]->has_photo = is_null($clb->getAvatarPhoto()) ? 0 : 1;
+			                break;
+			            case "photo_max_orig":
+			                $response[$i]->photo_max_orig = $clb->getAvatarURL();
+			                break;
+			            case "photo_max":
+			                $response[$i]->photo_max = $clb->getAvatarURL();
+			                break;
                         case "photo_50":
                             $response[$i]->photo_50 = $clb->getAvatarURL();
                             break;
@@ -204,16 +179,16 @@ final class Groups extends VKAPIRequestHandler
                         case "photo_400_orig":
                             $response[$i]->photo_400_orig = $clb->getAvatarURL("normal");
                             break;
-                        case "members_count":
-                            $response[$i]->members_count = $clb->getFollowersCount();
-                            break;
-                        case "site":
-                            $response[$i]->site = $clb->getWebsite();
-                            break;
+			            case "members_count":
+			                $response[$i]->members_count = $clb->getFollowersCount();
+			                break;
+			            case "site":
+			                $response[$i]->site = $clb->getWebsite();
+			                break;
                         case "description":
-                            $response[$i]->description = $clb->getDescription();
+			                $response[$i]->description = $clb->getDescription();
                             break;
-                        case "contacts":
+			            case "contacts":
                             $contacts;
                             $contactTmp = $clb->getManagers(1, true);
 
@@ -223,8 +198,8 @@ final class Groups extends VKAPIRequestHandler
                                     "desc"    => $contact->getComment()
                                 );
 
-                            $response[$i]->contacts = $contacts;
-                            break;
+			                $response[$i]->contacts = $contacts;
+			                break;
                         case "can_post":
                             if(!is_null($this->getUser()))
                                 if($clb->canBeModifiedBy($this->getUser()))
@@ -245,14 +220,14 @@ final class Groups extends VKAPIRequestHandler
         $clubs = new ClubsRepo;
         
         $array = [];
-        $find  = $clubs->find($q, ["doNotShowDeleted" => true]);
+		$find  = $clubs->find($q);
 
         foreach ($find as $group)
             $array[] = $group->getId();
 
         return (object) [
-            "count" => $find->size(),
-            "items" => $this->getById(implode(',', $array), "", "is_admin,is_member,is_advertiser,photo_50,photo_100,photo_200", $offset, $count)
+        	"count" => $find->size(),
+        	"items" => $this->getById(implode(',', $array), "", "is_admin,is_member,is_advertiser,photo_50,photo_100,photo_200", $offset, $count)
             /*
              * As there is no thing as "fields" by the original documentation
              * i'll just bake this param by the example shown here: https://dev.vk.com/method/groups.search 
@@ -266,8 +241,6 @@ final class Groups extends VKAPIRequestHandler
         $this->willExecuteWriteAction();
         
         $club = (new ClubsRepo)->get($group_id);
-
-        if(!$club || $club->isDeleted()) $this->fail(23, "You can't subscribe to deleted club");
         
         $isMember = !is_null($this->getUser()) ? (int) $club->getSubscriptionStatus($this->getUser()) : 0;
 
@@ -327,8 +300,6 @@ final class Groups extends VKAPIRequestHandler
         $club = (new ClubsRepo)->get($group_id);
 
         if(!$club) $this->fail(203, "Club not found");
-        if($club->isDeleted()) $this->fail(23, "Club was deleted");
-
         if(!$club || !$club->canBeModifiedBy($this->getUser())) $this->fail(15, "You can't modify this group.");
         if(!empty($screen_name) && !$club->setShortcode($screen_name)) $this->fail(103, "Invalid shortcode.");
 
@@ -351,11 +322,8 @@ final class Groups extends VKAPIRequestHandler
     {
         # bdate,can_post,can_see_all_posts,can_see_audio,can_write_private_message,city,common_count,connections,contacts,country,domain,education,has_mobile,last_seen,lists,online,online_mobile,photo_100,photo_200,photo_200_orig,photo_400_orig,photo_50,photo_max,photo_max_orig,relation,relatives,schools,sex,site,status,universities
         $club = (new ClubsRepo)->get((int) $group_id);
-        if(!$club || $club->isDeleted()) 
-            $this->fail(125, "Invalid club");
-
-        if(!$club->canBeViewedBy($this->getUser() ?? NULL)) 
-            $this->fail(8, "Access denied");
+        if(!$club) 
+            $this->fail(125, "Invalid group id");
 
         $sorter = "follower ASC";
 
@@ -374,7 +342,7 @@ final class Groups extends VKAPIRequestHandler
         $members = array_slice(iterator_to_array($club->getFollowers(1, $count, $sorter)), $offset);
         $arr = (object) [
             "count" => count($members), 
-            "items" => []];
+            "items" => array()];
         
         $filds = explode(",", $fields);
 
@@ -385,7 +353,6 @@ final class Groups extends VKAPIRequestHandler
             }
 
             $arr->items[] = (object) [
-                "id" => $member->getId(),
                 "first_name" => $member->getFirstName(),
                 "last_name" => $member->getLastName(),
             ];
@@ -503,8 +470,6 @@ final class Groups extends VKAPIRequestHandler
             "video"          => 0,
             "audio"          => 0,
             "docs"           => 0,
-            "hide_from_global_feed" => (int)$club->isHideFromGlobalFeedEnabled(),
-            "administrators_list"   => (int)$club->getAdministratorsListDisplay(),
             "topics"         => $club->isEveryoneCanCreateTopics() == true ? 1 : 0,
             "wiki"           => 0,
             "messages"       => 0,
@@ -542,9 +507,6 @@ final class Groups extends VKAPIRequestHandler
 
         if(!$club || $group_id == 0)
             $this->fail(203, "Invalid club");
-
-        if($club->isDeleted())
-            $this->fail(25, "No");
 
         if(!$usver || $usver->isDeleted() || $user_id == 0)
             $this->fail(30, "Invalid user");

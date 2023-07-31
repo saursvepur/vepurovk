@@ -98,14 +98,6 @@
                                             <a href="/admin/bannedLinks">{_admin_banned_links}</a>
                                         </li>
                                     </ul>
-									<div class="aui-nav-heading">
-                                        <strong>Chandler</strong>
-                                    </div>
-                                    <ul class="aui-nav">
-                                        <li>
-                                            <a href="/admin/chandler/groups">{_c_groups}</a>
-                                        </li>
-                                    </ul>
                                     <div class="aui-nav-heading">
                                         <strong>{_admin_services}</strong>
                                     </div>
@@ -123,6 +115,9 @@
                                     <ul class="aui-nav">
                                         <li>
                                             <a href="/about:openvk">{_admin_about_version}</a>
+                                        </li>
+                                        <li>
+                                            <a href="/admin/translation">{_translations}</a>
                                         </li>
                                         <li>
                                             <a href="/about">{_admin_about_instance}</a>

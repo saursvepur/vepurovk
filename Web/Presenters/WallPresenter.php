@@ -158,6 +158,7 @@ final class WallPresenter extends OpenVKPresenter
                    ->select("id")
                    ->where("wall IN (?)", $ids)
                    ->where("deleted", 0)
+                   ->where("suggested", 0)
                    ->order("created DESC");
         $this->template->paginatorConf = (object) [
             "count"   => sizeof($posts),
@@ -177,8 +178,7 @@ final class WallPresenter extends OpenVKPresenter
         $page  = (int) ($_GET["p"] ?? 1);
         $pPage = min((int) ($_GET["posts"] ?? OPENVK_DEFAULT_PER_PAGE), 50);
 
-        $queryBase = "FROM `posts` LEFT JOIN `groups` ON GREATEST(`posts`.`wall`, 0) = 0 AND `groups`.`id` = ABS(`posts`.`wall`) LEFT JOIN `profiles` ON LEAST(`posts`.`wall`, 0) = 0 AND `profiles`.`id` = ABS(`posts`.`wall`)";
-        $queryBase .= "WHERE (`groups`.`hide_from_global_feed` = 0 OR `groups`.`name` IS NULL) AND (`profiles`.`profile_type` = 0 OR `profiles`.`first_name` IS NULL) AND `posts`.`deleted` = 0";
+        $queryBase = "FROM `posts` LEFT JOIN `groups` ON GREATEST(`posts`.`wall`, 0) = 0 AND `groups`.`id` = ABS(`posts`.`wall`) WHERE (`groups`.`hide_from_global_feed` = 0 OR `groups`.`name` IS NULL) AND `posts`.`deleted` = 0 AND `posts`.`suggested` = 0";
 
         if($this->user->identity->getNsfwTolerance() === User::NSFW_INTOLERANT)
             $queryBase .= " AND `nsfw` = 0";
@@ -330,6 +330,15 @@ final class WallPresenter extends OpenVKPresenter
             $post->setAnonymous($anon);
             $post->setFlags($flags);
             $post->setNsfw($this->postParam("nsfw") === "on");
+
+            if($this->postParam("set_source") === "on" && !is_null($this->postParam("source")) && !empty($this->postParam("source")) && preg_match("/^(http:\/\/|https:\/\/)*[а-яА-ЯёЁa-z0-9\-_]+(\.[а-яА-ЯёЁa-z0-9\-_]+)+(\/\S*)*$/iu", $this->postParam("source")) && iconv_strlen($this->postParam("set_source")) < 50) {
+                $post->setSource($this->postParam("source"));
+            }
+
+            if($wall < 0 && !$wallOwner->canBeModifiedBy($this->user->identity) && $wallOwner->getWallType() == 2) {
+                $post->setSuggested(1);
+            }
+
             $post->save();
         } catch (\LengthException $ex) {
             $this->flashFail("err", tr("failed_to_publish_post"), tr("post_is_too_big"));
@@ -360,6 +369,12 @@ final class WallPresenter extends OpenVKPresenter
                 (new MentionNotification($mentionee, $post, $post->getOwner(), strip_tags($post->getText())))->emit();
         
         $this->redirect($wallOwner->getURL());
+
+        if($wall < 0 && !$wallOwner->canBeModifiedBy($this->user->identity) && $wallOwner->getWallType() == 2) {
+            $this->redirect("/club".$wallOwner->getId()."/suggested");
+        } else {
+            $this->redirect($wallOwner->getURL());
+        }
     }
     
     function renderPost(int $wall, int $post_id): void
@@ -475,7 +490,7 @@ final class WallPresenter extends OpenVKPresenter
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
         
-        $post = $this->posts->getPostById($wall, $post_id);
+        $post = $this->posts->getPostById($wall, $post_id, true);
         if(!$post)
             $this->notFound();
         $user = $this->user->id;
