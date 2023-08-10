@@ -455,6 +455,9 @@ $(document).on("click", "#publish_post", async (e) => {
         let post;
 
         try {
+            e.currentTarget.classList.add("loaded")
+            e.currentTarget.setAttribute("value", "")
+            e.currentTarget.setAttribute("id", "")
             post = await API.Wall.acceptPost(id, document.getElementById("signatr").checked, document.getElementById("pooblish").value)
         } catch(ex) {
             switch(ex.code) {
@@ -475,12 +478,33 @@ $(document).on("click", "#publish_post", async (e) => {
                     break;
             }
 
+            e.currentTarget.setAttribute("value", tr("publish_suggested"))
+            e.currentTarget.classList.remove("loaded")
+            e.currentTarget.setAttribute("id", "publish_post")
             return 0;
         }
 
         NewNotification(tr("suggestion_succefully_published"), tr("suggestion_press_to_go"), null, () => {window.location.assign("/wall" + post.id)});
         document.getElementById("cound").innerHTML = tr("x_suggested_posts_in_group", post.new_count)
         e.currentTarget.parentNode.parentNode.parentNode.parentNode.parentNode.outerHTML = ""
+
+        if(document.querySelector("object a[href='"+location.pathname+"'] b") != null) {
+            document.querySelector("object a[href='"+location.pathname+"'] b").innerHTML = post.new_count
+
+            if(post.new_count < 1) {
+                u("object a[href='"+location.pathname+"']").remove()
+            }
+        }
+
+        if(e.currentTarget.parentNode.parentNode.parentNode.parentNode.parentNode.tagName == "TABLE") {
+            e.currentTarget.parentNode.parentNode.parentNode.parentNode.parentNode.outerHTML = ""
+        } else {
+            e.currentTarget.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.outerHTML = ""
+        }
+
+        if(document.querySelectorAll(".post").length < 1 && post.new_count > 0) {
+            loadMoreSuggestedPosts()
+        }
     }), Function.noop]);
 
     document.getElementById("pooblish").innerHTML = e.currentTarget.parentNode.parentNode.parentNode.parentNode.parentNode.querySelector(".really_text").innerHTML.replace(/(<([^>]+)>)/gi, '')
@@ -492,7 +516,9 @@ $(document).on("click", "#decline_post", async (e) => {
     let post;
 
     try {
-        e.currentTarget.parentNode.parentNode.insertAdjacentHTML("afterbegin", `<img id="deleteMe" src="/assets/packages/static/openvk/img/loading_mini.gif">`)
+        e.currentTarget.classList.add("loaded")
+        e.currentTarget.setAttribute("value", "")
+        e.currentTarget.setAttribute("id", "")
         post = await API.Wall.declinePost(id)
     } catch(ex) {
         switch(ex.code) {
@@ -513,16 +539,71 @@ $(document).on("click", "#decline_post", async (e) => {
                 break;
         }
 
+        e.currentTarget.setAttribute("value", tr("decline_suggested"))
+        e.currentTarget.setAttribute("id", "decline_post")
+        e.currentTarget.classList.remove("loaded")
         return 0;
-    } finally {
-        u("#deleteMe").remove()
     }
 
     // ребята, приключений час
-    NewNotification(tr("suggestion_succefully_declined"), "", null);
-    e.currentTarget.parentNode.parentNode.parentNode.parentNode.parentNode.outerHTML = ""
+
+    if(e.currentTarget.parentNode.parentNode.parentNode.parentNode.parentNode.tagName == "TABLE") {
+        e.currentTarget.parentNode.parentNode.parentNode.parentNode.parentNode.outerHTML = ""
+    } else {
+        e.currentTarget.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.outerHTML = ""
+    }
+
     document.getElementById("cound").innerHTML = tr("x_suggested_posts_in_group", post)
+
+    if(document.querySelector("object a[href='"+location.pathname+"'] b") != null) {
+        document.querySelector("object a[href='"+location.pathname+"'] b").innerHTML = post
+
+        if(post < 1) {
+            u("object a[href='"+location.pathname+"']").remove()
+        }
+    }
+
+    if(document.querySelectorAll(".post").length < 1 && post > 0) {
+        loadMoreSuggestedPosts()
+    }
 })
+
+function loadMoreSuggestedPosts()
+{
+    let xhr = new XMLHttpRequest
+    xhr.open("GET", location.href)
+
+    xhr.onloadstart = () => {
+        document.getElementById("postz").innerHTML = `<img src="/assets/packages/static/openvk/img/loading_mini.gif">`
+    }
+
+    xhr.onload = () => {
+        let parser = new DOMParser()
+        let body   = parser.parseFromString(xhr.responseText, "text/html").getElementById("postz")
+
+        if(body.querySelectorAll(".post").length < 1) {
+            let url = new URL(location.href)
+            url.searchParams.set("p", url.searchParams.get("p") - 1)
+
+            if(url.searchParams.get("p") < 1) {
+                return 0;
+            }
+
+            // ждут давно чужие земли нас
+            history.pushState({}, "", url)
+
+            loadMoreSuggestedPosts()
+        }
+
+        document.getElementById("postz").innerHTML = body.innerHTML
+    }
+
+    xhr.onerror = () => {
+        document.getElementById("postz").innerHTML = tr("error_loading_suggest")
+    }
+
+    xhr.send()
+}
 
 // pornhub window player
 

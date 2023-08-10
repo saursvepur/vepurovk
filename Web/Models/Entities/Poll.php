@@ -165,7 +165,7 @@ class Poll extends Attachable
     
     function canVote(User $user): bool
     {
-        return !$this->hasEnded() && !$this->hasVoted($user);
+        return !$this->hasEnded() && !$this->hasVoted($user) && !is_null($this->getAttachedPost()) && $this->getAttachedPost()->getSuggestionType() == 0;
     }
     
     function vote(User $user, array $optionIds): void

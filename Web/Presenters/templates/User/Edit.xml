@@ -102,7 +102,7 @@
                             <span class="nobold">{_"relationship"}: </span>
                         </td>
                         <td>
-                            <select name="marialstatus">
+                            <select name="marialstatus" onChange="toggleMaritalStatus(this)">
                                 <option n:foreach="range(0, 8) as $i" n:attr="selected: ($user->getMaritalStatus() == $i)" value="{$i}">
                                     {if $user->isFemale()}
                                         {var $str = "relationship_$i"}
@@ -118,23 +118,23 @@
                             </select>
                         </td>
                     </tr>
+                    <tr id="maritalstatus-user"
+                        n:attr="style => $user->getMaritalStatusUser() || ($user->getMaritalStatus() && !in_array($user->getMaritalStatus(), [0, 1, 8])) ? '' : 'display: none;'">
+                        <td width="120" valign="top"></td>
+                        <td>
+                            <input type="text" placeholder="{_page_address}" name="maritalstatus-user"
+                                   n:attr="value => $user->getMaritalStatusUser() ? $user->getMaritalStatusUser()->getId() : ''" />
+                        </td>
+                    </tr>
                     <tr>
                         <td width="120" valign="top">
                             <span class="nobold">{_"politViews"}: </span>
                         </td>
                         <td>
                             <select name="politViews">
-                                <option value="0" {if $user->getPoliticalViews() == 0}selected{/if}>{_"politViews_0"}</option>
-                                <option value="1" {if $user->getPoliticalViews() == 1}selected{/if}>{_"politViews_1"}</option>
-                                <option value="2" {if $user->getPoliticalViews() == 2}selected{/if}>{_"politViews_2"}</option>
-                                <option value="3" {if $user->getPoliticalViews() == 3}selected{/if}>{_"politViews_3"}</option>
-                                <option value="4" {if $user->getPoliticalViews() == 4}selected{/if}>{_"politViews_4"}</option>
-                                <option value="5" {if $user->getPoliticalViews() == 5}selected{/if}>{_"politViews_5"}</option>
-                                <option value="6" {if $user->getPoliticalViews() == 6}selected{/if}>{_"politViews_6"}</option>
-                                <option value="7" {if $user->getPoliticalViews() == 7}selected{/if}>{_"politViews_7"}</option>
-                                <option value="8" {if $user->getPoliticalViews() == 8}selected{/if}>{_"politViews_8"}</option>
-                                <option value="9" {if $user->getPoliticalViews() == 9}selected{/if}>{_"politViews_9"}</option>
-                                
+                                <option n:foreach="range(0, 9) as $i" n:attr="selected => ($user->getPoliticalViews() == $i)" value="{$i}">
+                                    {tr("politViews_" . $i)}
+                                </option>
                             </select>
                         </td>
                     </tr>
@@ -172,6 +172,17 @@
                     </tr>
                 </tbody>
             </table>
+            <script>
+                function toggleMaritalStatus(e) {
+                    let elem = $("#maritalstatus-user");
+                    $("#maritalstatus-user-select").empty();
+                    if ([0, 1, 8].includes(Number(e.value))) {
+                        elem.hide();
+                    } else {
+                        elem.show();
+                    }
+                }
+            </script>
         </form>
         
         {elseif $isContacts}

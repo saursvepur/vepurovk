@@ -199,7 +199,7 @@
                                     (<b>{$thisUser->getNotificationsCount()}</b>)
                                 {/if}
                             </a>
-							<a href="/apps?act=installed" class="link">{_my_apps}</a>
+							<a n:if="$thisUser->getLeftMenuItemStatus('apps')" href="/apps?act=installed" class="link">{_my_apps}</a>
                             <a href="/settings" class="link">{_my_settings}</a>
                             
                             {var $canAccessAdminPanel = $thisUser->getChandlerUser()->can("access")->model("admin")->whichBelongsTo(NULL)}
@@ -222,7 +222,7 @@
                                     {$club->getName()}
 
                                     <object type="internal/link" style="white-space: normal;" id="sug{$club->getId()}" n:if="$club->getSuggestedPostsCount() > 0 && $club->getWallType() == 2">
-                                        <a href="{$club->getURL()}/suggested/all">
+                                        <a href="/club{$club->getId()}/suggested">
                                             (<b>{$club->getSuggestedPostsCount()}</b>)
                                         </a>
                                     </object>

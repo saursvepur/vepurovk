@@ -50,7 +50,7 @@
                         </a>
                     {/if}
                     <br/>
-                    <a href="/wall{$post->getPrettyId()}" class="date">
+                    <a href="{if !$suggestion}/wall{$post->getPrettyId()}{else}javascript:void(0){/if}" class="date">
                         {$post->getPublicationTime()}{if $post->isPinned()}, {_pinned}{/if}
 						<a n:if="!empty($platform)" class="client_app" data-app-tag="{$platform}" data-app-name="{$platformDetails['name']}" data-app-url="{$platformDetails['url']}" data-app-img="{$platformDetails['img']}">
                             <img src="/assets/packages/static/openvk/img/app_icons_mini/{$post->getPlatform(this)}.svg">
@@ -59,7 +59,7 @@
                 </div>
                 <div class="post-content" id="{$post->getPrettyId()}">
                     <div class="text" id="text{$post->getPrettyId()}">
-                        {$post->getText()|noescape}
+                        <span class="really_text">{$post->getText()|noescape}</span>
                         
                         {var $width = ($GLOBALS["_bigWall"] ?? false) ? 540 : 320}
                         {if isset($GLOBALS["_nesAttGloCou"])}
@@ -78,8 +78,10 @@
                             </div>
                         </div>
                     </div>
-					
-					
+                    <div n:if="$suggestion && $post->canBePinnedBy($thisUser ?? NULL)" class="suggestionControls" style="margin-bottom: 7px;">
+                        <input type="button" class="button" id="publish_post" data-id="{$post->getId()}" value="{_publish_suggested}">
+                        <input type="button" class="button" id="decline_post" data-id="{$post->getId()}" value="{_decline_suggested}">
+                    </div>
                     <div n:if="$post->isAd()" style="color:grey;">
                         <br/>
                         &nbsp;! Этот пост был размещён за взятку.

@@ -301,10 +301,11 @@ class User extends RowModel
         return $this->getRecord()->marital_status;
     }
 
-    function getLocalizedMaritalStatus(): string
+    function getLocalizedMaritalStatus(?bool $prefix = false): string
     {
         $status = $this->getMaritalStatus();
         $string = "relationship_$status";
+        if ($prefix) $string .= "_prefix";
         if($this->isFemale()) {
             $res = tr($string . "_fem");
             if($res != ("@" . $string . "_fem"))
@@ -312,6 +313,17 @@ class User extends RowModel
         }
 
         return tr($string);
+    }
+
+    function getMaritalStatusUser(): ?User
+    {
+        if (!$this->getRecord()->marital_status_user) return NULL;
+        return (new Users)->get($this->getRecord()->marital_status_user);
+    }
+
+    function getMaritalStatusUserPrefix(): ?string
+    {
+        return $this->getLocalizedMaritalStatus(true);
     }
 
     function getContactEmail(): ?string
@@ -501,6 +513,7 @@ class User extends RowModel
                 "news",
                 "links",
                 "poster",
+                "apps"
             ],
         ])->get($id);
     }
@@ -527,6 +540,8 @@ class User extends RowModel
 
     function getPrivacyPermission(string $permission, ?User $user = NULL): bool
     {
+        if ($this->isServiceAccount() && $permission !== "page.read" && ($user !== NULL && $user->getId() !== $this->getId())) return false;
+
         $permStatus = $this->getPrivacySetting($permission);
         if(!$user)
             return $permStatus === User::PRIVACY_EVERYONE;
@@ -1066,6 +1081,7 @@ class User extends RowModel
                 "news",
                 "links",
                 "poster",
+                "apps"
             ],
         ])->set($id, (int) $status)->toInteger();
 
@@ -1122,6 +1138,15 @@ class User extends RowModel
     {
         $this->stateChanges("shortcode", $this->getRecord()->shortcode); #fix KABOBSQL
         $this->stateChanges("online", $time);
+
+        return true;
+    }
+
+    function updOnline(string $platform): bool
+    {
+        $this->setOnline(time());
+        $this->setClient_name($platform);
+        $this->save();
 
         return true;
     }
@@ -1216,6 +1241,16 @@ class User extends RowModel
             return false;
 
         return true;
+    }
+
+    function getServiceAccountNotify(): ?string
+    {
+        return $this->getRecord()->service_account_notify;
+    }
+
+    function isServiceAccount(): bool
+    {
+        return !is_null($this->getServiceAccountNotify());
     }
 	
 	function getListsByFriend(User $rely, User $friend) 

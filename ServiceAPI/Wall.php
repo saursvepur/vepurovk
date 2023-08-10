@@ -160,7 +160,8 @@ class Wall implements Handler
 
         $post->save();
 
-        (new PostAcceptedNotification($author, $post, $post->getWallOwner()))->emit();
+        if($author->getId() != $this->user->getId())
+            (new PostAcceptedNotification($author, $post, $post->getWallOwner()))->emit();
 
         $resolve(["id" => $post->getPrettyId(), "new_count" => $this->posts->getSuggestedPostsCount($post->getWallOwner()->getId())]);
     }

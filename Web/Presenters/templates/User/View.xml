@@ -487,7 +487,7 @@
             </div>
 			<div class="accountInfo clearFix">
                 <div class="profileName">
-                    <h2>{$user->getFullName()}</h2>
+                    <h2 n:attr="style => $user->isServiceAccount() ? 'font-weight: 700; color: #1b7a1b;' : ''">{$user->getFullName()}</h2>
                     {if !is_null($user->getStatus())}
                         <div n:class="page_status, $thatIsThisUser ? page_status_edit_button" n:attr="id => $thatIsThisUser ? page_status_text : NULL">{$user->getStatus()}</div>
                     {elseif $thatIsThisUser}
@@ -506,7 +506,15 @@
                         </tr>
                         <tr>
                             <td class="label"><span class="nobold">{_"relationship"}:</span></td>
-                            <td class="data">{$user->getLocalizedMaritalStatus()}</td>
+                             <td class="data">
+                                {$user->getLocalizedMaritalStatus()}
+                                {if $user->getMaritalStatusUser()}
+                                    {$user->getMaritalStatusUserPrefix()}
+                                    <a href="{$user->getMaritalStatusUser()->getURL()}" target="_blank">
+                                        {$user->getMaritalStatusUser()->getCanonicalName()}
+                                    </a>
+                                {/if}
+                            </td>
                         </tr>
                         <tr>
                             <td class="label"><span class="nobold">{_"registration_date"}: </span></td>
@@ -689,7 +697,13 @@
             </div>
         </div>
         
-        {presenter "openvk!Wall->wallEmbedded", $user->getId()}
+        {if $user->isServiceAccount() && $user->getId() !== $thisUser->getId()}
+            <div style="color: grey; margin: 36px 48px; text-align: center;">
+                {$user->getServiceAccountNotify()|noescape}
+            </div>
+        {else}
+            {presenter "openvk!Wall->wallEmbedded", $user->getId()}
+        {/if}
         
         <script n:if="isset($thisUser) && $thisUser->getChandlerUser()->can('access')->model('admin')->whichBelongsTo(NULL)">
             function banUser() {
