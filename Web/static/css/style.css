@@ -3072,6 +3072,18 @@ a.poll-retract-vote {
     padding-bottom: 20px;
 }
 
+.button.loaded {
+    background: #595959 url("/assets/packages/static/openvk/img/loading_mini.gif") no-repeat 50% 50%;
+    padding: 2px 9px 7px 39px;
+    margin-bottom: -6px;
+}
+
+@-moz-document url-prefix() {
+    .button.loaded {
+        padding: 16px 40px 6px 4px !important;
+    }
+}
+
 .no_access_attachment:hover
 {
     background-color: rgb(240, 240, 240);
