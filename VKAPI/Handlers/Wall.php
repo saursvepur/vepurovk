@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 namespace openvk\VKAPI\Handlers;
 use openvk\Web\Models\Entities\User;
-use openvk\Web\Models\Entities\Notifications\{WallPostNotification, NewSuggestedPostsNotification, RepostNotification, CommentNotification};
+use openvk\Web\Models\Entities\Notifications\{PostAcceptedNotification, WallPostNotification, NewSuggestedPostsNotification, RepostNotification, CommentNotification};
 use openvk\Web\Models\Repositories\Users as UsersRepo;
 use openvk\Web\Models\Entities\Club;
 use openvk\Web\Models\Repositories\Clubs as ClubsRepo;
@@ -30,16 +30,16 @@ final class Wall extends VKAPIRequestHandler
         $cnt      = 0;
 
         if ($owner_id > 0)
-            $wallOwner = (new UsersRepo)->get($owner_id);
+            $wallOnwer = (new UsersRepo)->get($owner_id);
         else
-            $wallOwner = (new ClubsRepo)->get($owner_id * -1);
-        
-        if(!$wallOwner || $wallOwner->isDeleted())
-            $this->fail(18, "User or club was deleted or banned");
+            $wallOnwer = (new ClubsRepo)->get($owner_id * -1);
 
-        if(!$wallOwner->canBeViewedBy($this->getUser() ?? NULL)) {
-            $this->fail(2, "Access denied");
-        }
+        if ($owner_id > 0)
+            if(!$wallOnwer || $wallOnwer->isDeleted())
+                $this->fail(18, "User was deleted or banned");
+        else
+            if(!$wallOnwer)
+                $this->fail(15, "Access denied: wall is disabled"); // Don't search for logic here pls
 
         $iteratorv;
 
@@ -57,10 +57,12 @@ final class Wall extends VKAPIRequestHandler
             case "postponed":
                 $this->fail(66666, "Otlojka is not implemented :)");
                 break;
-            # В апи, походу, нету метода, который бы публиковал запись из предложки
             case "suggests":
                 if($owner_id < 0) {
-                    if($wallOwner->canBeModifiedBy($this->getUser())) {
+                    if($wallOnwer->getWallType() != 2) 
+                        $this->fail(125, "Group's wall type is open or closed");
+
+                    if($wallOnwer->canBeModifiedBy($this->getUser())) {
                         $iteratorv = $posts->getSuggestedPosts($owner_id * -1, 1, $count, $offset);
                         $cnt       = $posts->getSuggestedPostsCount($owner_id * -1);
                     } else {
@@ -91,20 +93,12 @@ final class Wall extends VKAPIRequestHandler
                 } else if($attachment instanceof \openvk\Web\Models\Entities\Poll) {
                     $attachments[] = $this->getApiPoll($attachment, $this->getUser());
                 } else if ($attachment instanceof \openvk\Web\Models\Entities\Video) {
-                    $attachments[] = $attachment->getApiStructure($this->getUser());
+                    $attachments[] = $attachment->getApiStructure();
                 } else if ($attachment instanceof \openvk\Web\Models\Entities\Note) {
-                    $attachments[] = $attachment->toVkApiStruct($this->getUser());
+                    $attachments[] = $attachment->toVkApiStruct();
                 } else if ($attachment instanceof \openvk\Web\Models\Entities\Post) {
                     $repostAttachments = [];
 
-                    if(!$attachment->canBeViewedBy($this->getUser())) {
-                        $repost[] = [
-                            "err" => "Access to attachment denied"
-                        ];
-                        
-                        continue;
-                    }
-                    
                     foreach($attachment->getChildren() as $repostAttachment) {
                         if($repostAttachment instanceof \openvk\Web\Models\Entities\Photo) {
                             if($repostAttachment->isDeleted())
@@ -169,18 +163,13 @@ final class Wall extends VKAPIRequestHandler
                 "can_archive"  => false, # TODO MAYBE
                 "is_archived"  => false,
                 "is_pinned"    => $post->isPinned(),
+                "is_explicit"  => $post->isExplicit(),
                 "attachments"  => $attachments,
                 "post_source"  => $post_source,
                 "comments"     => (object)[
                     "count"    => $post->getCommentsCount(),
                     "can_post" => 1
                 ],
-                "copyright" => !is_null($post->getSource(false))  ? (object)[
-                    "id"   => 0,
-                    "link" => $post->getSource(false),
-                    "name" => "none",
-                    "type" => "link"
-                ] : NULL,
                 "likes" => (object)[
                     "count"       => $post->getLikesCount(),
                     "user_likes"  => (int) $post->hasLikeFrom($this->getUser()),
@@ -214,8 +203,8 @@ final class Wall extends VKAPIRequestHandler
                     "first_name"        => $user->getFirstName(),
                     "id"                => $user->getId(),
                     "last_name"         => $user->getLastName(),
-                    "can_access_closed" => $user->canBeViewedBy($this->getUser()),
-                    "is_closed"         => $user->isClosed(),
+                    "can_access_closed" => false,
+                    "is_closed"         => false,
                     "sex"               => $user->isFemale() ? 1 : 2,
                     "screen_name"       => $user->getShortCode(),
                     "photo_50"          => $user->getAvatarUrl(),
@@ -232,8 +221,6 @@ final class Wall extends VKAPIRequestHandler
                     "name"        => $group->getName(),
                     "screen_name" => $group->getShortCode(),
                     "is_closed"   => 0,
-                    "is_deleted"  => $group->isDeleted(),
-                    "is_banned"   => $group->isBanned(),
                     "type"        => "group",
                     "photo_50"    => $group->getAvatarUrl(),
                     "photo_100"   => $group->getAvatarUrl(),
@@ -271,13 +258,7 @@ final class Wall extends VKAPIRequestHandler
         foreach($psts as $pst) {
             $id   = explode("_", $pst);
             $post = (new PostsRepo)->getPostById(intval($id[0]), intval($id[1]));
-            if(!$post || $post->getWallOwner()->isDeleted()) continue;
-            
-            if(!$post->canBeViewedBy($this->getUser() ?? NULL)) {
-                continue;
-            }
-
-            if(!$post->isDeleted()) {
+            if($post && !$post->isDeleted()) {
                 $from_id = get_class($post->getOwner()) == "openvk\Web\Models\Entities\Club" ? $post->getOwner()->getId() * (-1) : $post->getOwner()->getId();
                 $attachments = [];
                 $repost = []; // чел высрал семь сигарет 😳 помянем 🕯
@@ -287,19 +268,11 @@ final class Wall extends VKAPIRequestHandler
                     } else if($attachment instanceof \openvk\Web\Models\Entities\Poll) {
                         $attachments[] = $this->getApiPoll($attachment, $user);
                     } else if ($attachment instanceof \openvk\Web\Models\Entities\Video) {
-                        $attachments[] = $attachment->getApiStructure($this->getUser());
+                        $attachments[] = $attachment->getApiStructure();
                     } else if ($attachment instanceof \openvk\Web\Models\Entities\Note) {
-                        $attachments[] = $attachment->toVkApiStruct($this->getUser());
+                        $attachments[] = $attachment->toVkApiStruct();
                     } else if ($attachment instanceof \openvk\Web\Models\Entities\Post) {
                         $repostAttachments = [];
-
-                        if(!$attachment->canBeViewedBy($this->getUser())) {
-                            $repost[] = [
-                                "err" => "Access to attachment denied"
-                            ];
-
-                            continue;
-                        }
 
                         foreach($attachment->getChildren() as $repostAttachment) {
                             if($repostAttachment instanceof \openvk\Web\Models\Entities\Photo) {
@@ -365,18 +338,13 @@ final class Wall extends VKAPIRequestHandler
                     "can_archive"  => false, # TODO MAYBE
                     "is_archived"  => false,
                     "is_pinned"    => $post->isPinned(),
+                    "is_explicit"  => $post->isExplicit(),
                     "post_source"  => $post_source,
                     "attachments"  => $attachments,
                     "comments"     => (object)[
                         "count"    => $post->getCommentsCount(),
                         "can_post" => 1
                     ],
-                    "copyright" => !is_null($post->getSource(false))  ? (object)[
-                        "id"   => 0,
-                        "link" => $post->getSource(false),
-                        "name" => "none",
-                        "type" => "link"
-                    ] : NULL,
                     "likes" => (object)[
                         "count"       => $post->getLikesCount(),
                         "user_likes"  => (int) $post->hasLikeFrom($user),
@@ -412,8 +380,8 @@ final class Wall extends VKAPIRequestHandler
                     "first_name"        => $user->getFirstName(),
                     "id"                => $user->getId(),
                     "last_name"         => $user->getLastName(),
-                    "can_access_closed" => $user->canBeViewedBy($this->getUser()),
-                    "is_closed"         => $user->isClosed(),
+                    "can_access_closed" => false,
+                    "is_closed"         => false,
                     "sex"               => $user->isFemale() ? 1 : 2,
                     "screen_name"       => $user->getShortCode(),
                     "photo_50"          => $user->getAvatarUrl(),
@@ -431,8 +399,6 @@ final class Wall extends VKAPIRequestHandler
                     "screen_name"  => $group->getShortCode(),
                     "is_closed"    => 0,
                     "type"         => "group",
-                    "is_deleted"  => (int)$group->isDeleted(),
-                    "is_banned"   => (int)$group->isBanned(),
                     "photo_50"     => $group->getAvatarUrl(),
                     "photo_100"    => $group->getAvatarUrl(),
                     "photo_200"    => $group->getAvatarUrl(),
@@ -451,7 +417,7 @@ final class Wall extends VKAPIRequestHandler
             ];
     }
 
-    function post(string $owner_id, string $message = "", int $from_group = 0, int $signed = 0, string $attachments = "", string $copyright = NULL): object
+    function post(string $owner_id, string $message = "", int $from_group = 0, int $signed = 0, string $attachments = "", int $post_id = 0): object
     {
         $this->requireUser();
         $this->willExecuteWriteAction();
@@ -461,20 +427,57 @@ final class Wall extends VKAPIRequestHandler
         $wallOwner = ($owner_id > 0 ? (new UsersRepo)->get($owner_id) : (new ClubsRepo)->get($owner_id * -1))
                      ?? $this->fail(18, "User was deleted or banned");
         if($owner_id > 0)
-            $canPost = $wallOwner->getPrivacyPermission("wall.write", $this->getUser()) && $wallOwner->canBeViewedBy($this->getUser() ?? NULL);
+            $canPost = $wallOwner->getPrivacyPermission("wall.write", $this->getUser());
         else if($owner_id < 0)
-            if(!$wallOwner->isDeleted()) {
-                if($wallOwner->canBeModifiedBy($this->getUser()))
-                    $canPost = true;
-                else
-                    $canPost = $wallOwner->canPost();
-            } else {
-                $canPost = false;
-            }
+            if($wallOwner->canBeModifiedBy($this->getUser()))
+                $canPost = true;
+            else
+                $canPost = $wallOwner->canPost();
         else
             $canPost = false;
 
         if($canPost == false) $this->fail(15, "Access denied");
+
+        if($post_id > 0) {
+            if($owner_id > 0) {
+                $this->fail(62, "Suggested posts available only at groups");
+            }
+
+            $post = (new PostsRepo)->getPostById($owner_id, $post_id, true);
+
+            if(!$post || $post->isDeleted())
+                $this->fail(32, "Invald post");
+
+            if($post->getSuggestionType() == 0)
+                $this->fail(20, "Post is not suggested");
+
+            if($post->getSuggestionType() == 2)
+                $this->fail(16, "Post is declined");
+
+            if(!$post->canBePinnedBy($this->getUser()))
+                $this->fail(51, "Access denied");
+
+            $author = $post->getOwner();
+            $flags = 0;
+            $flags |= 0b10000000;
+
+            if($signed == 1)
+                $flags |= 0b01000000;
+
+            $post->setSuggested(0);
+            $post->setCreated(time());
+            $post->setFlags($flags);
+
+            if(!empty($message) && iconv_strlen($message) > 0)
+                $post->setContent($message);
+
+            $post->save();
+
+            if($author->getId() != $this->getUser()->getId())
+                (new PostAcceptedNotification($author, $post, $post->getWallOwner()))->emit();
+
+            return (object)["post_id" => $post->getVirtualId()];
+        }
 
         $anon = OPENVK_ROOT_CONF["openvk"]["preferences"]["wall"]["anonymousPosting"]["enable"];
         if($wallOwner instanceof Club && $from_group == 1 && $signed != 1 && $anon) {
@@ -504,10 +507,6 @@ final class Wall extends VKAPIRequestHandler
             $post->setContent($message);
             $post->setFlags($flags);
             $post->setApi_Source_Name($this->getPlatform());
-
-            if(!is_null($copyright) && !empty($copyright) && $copyright != "" && preg_match("/^(http:\/\/|https:\/\/)*[а-яА-ЯёЁa-z0-9\-_]+(\.[а-яА-ЯёЁa-z0-9\-_]+)+(\/\S*)*$/iu", $copyright) && iconv_strlen($copyright) < 50) {
-                $post->setSource($copyright);
-            }
 
             if($owner_id < 0 && !$wallOwner->canBeModifiedBy($this->getUser()) && $wallOwner->getWallType() == 2) {
                 $post->setSuggested(1);
@@ -593,7 +592,7 @@ final class Wall extends VKAPIRequestHandler
             }
 
             return (object)["post_id" => "on_view"];
-        }    
+        }
 
         return (object)["post_id" => $post->getVirtualId()];
     }
@@ -609,16 +608,12 @@ final class Wall extends VKAPIRequestHandler
         $post = (new PostsRepo)->getPostById((int) $postArray[1], (int) $postArray[2]);
         if(!$post || $post->isDeleted()) $this->fail(100, "One of the parameters specified was missing or invalid");
         
-        if(!$post->canBeViewedBy($this->getUser() ?? NULL)) {
-            $this->fail(12, "Access denied");
-        }
-
         $nPost = new Post;
         $nPost->setOwner($this->user->getId());
         
         if($group_id > 0) {
             $club  = (new ClubsRepo)->get($group_id);
-            if(!$club || $club->isDeleted())
+            if(!$club)
                 $this->fail(42, "Invalid group");
             
             if(!$club->canBeModifiedBy($this->user))
@@ -651,14 +646,6 @@ final class Wall extends VKAPIRequestHandler
 
         $post = (new PostsRepo)->getPostById($owner_id, $post_id);
         if(!$post || $post->isDeleted()) $this->fail(100, "One of the parameters specified was missing or invalid");
-        
-        if($post->getWallOwner()->isDeleted()) {
-            $this->fail(10, "Owner was deleted");
-        }
-
-        if(!$post->canBeViewedBy($this->getUser() ?? NULL)) {
-            $this->fail(8, "Access denied");
-        }
 
         $comments = (new CommentsRepo)->getCommentsByTarget($post, $offset+1, $count, $sort == "desc" ? "DESC" : "ASC");
 
@@ -666,8 +653,6 @@ final class Wall extends VKAPIRequestHandler
         $profiles = [];
 
         foreach($comments as $comment) {
-            if(!$comment || $comment->isDeleted()) continue;
-            
             $owner = $comment->getOwner();
             $oid   = $owner->getId();
             if($owner instanceof Club)
@@ -678,10 +663,8 @@ final class Wall extends VKAPIRequestHandler
             foreach($comment->getChildren() as $attachment) {
                 if($attachment instanceof \openvk\Web\Models\Entities\Photo) {
                     $attachments[] = $this->getApiPhoto($attachment);
-                } elseif($attachment instanceof \openvk\Web\Models\Entities\Video) {
-                    $attachments[] = $attachment->toVkApiStruct($this->getUser());
                 } elseif($attachment instanceof \openvk\Web\Models\Entities\Note) {
-                    $attachments[] = $attachment->toVkApiStruct($this->getUser());
+                    $attachments[] = $attachment->toVkApiStruct();
                 }
             }
 
@@ -741,18 +724,6 @@ final class Wall extends VKAPIRequestHandler
 
         $comment = (new CommentsRepo)->get($comment_id); # один хуй айди всех комментов общий
         
-        if(!$comment || $comment->isDeleted()) {
-            $this->fail(1, "Comment does not exists");
-        }
-
-        if($comment->getTarget()->getWallOwner()->isDeleted()) {
-            $this->fail(10, "Target's owner was deleted or banned");
-        }
-
-        if(!$comment->canBeViewedBy($this->getUser() ?? NULL)) {
-            $this->fail(8, "Access denied");
-        }
-
         $profiles = [];
 
         $attachments = [];
@@ -760,10 +731,6 @@ final class Wall extends VKAPIRequestHandler
         foreach($comment->getChildren() as $attachment) {
             if($attachment instanceof \openvk\Web\Models\Entities\Photo) {
                 $attachments[] = $this->getApiPhoto($attachment);
-            } elseif($attachment instanceof \openvk\Web\Models\Entities\Video) {
-                $attachments[] = $attachment->toVkApiStruct();
-            } elseif($attachment instanceof \openvk\Web\Models\Entities\Note) {
-                $attachments[] = $attachment->toVkApiStruct();
             }
         }
 
@@ -818,14 +785,6 @@ final class Wall extends VKAPIRequestHandler
         $post = (new PostsRepo)->getPostById($owner_id, $post_id);
         if(!$post || $post->isDeleted()) $this->fail(100, "Invalid post");
 
-        if($post->getWallOwner()->isDeleted()) {
-            $this->fail(10, "Owner was deleted or banned");
-        }
-
-        if(!$post->canBeViewedBy($this->getUser() ?? NULL)) {
-            $this->fail(8, "Access denied");
-        }
-        
         if($post->getTargetWall() < 0)
             $club = (new ClubsRepo)->get(abs($post->getTargetWall()));
 
@@ -908,12 +867,7 @@ final class Wall extends VKAPIRequestHandler
         $this->willExecuteWriteAction();
 
         $comment = (new CommentsRepo)->get($comment_id);
-        if(!$comment) $this->fail(100, "One of the parameters specified was missing or invalid");
-
-        if(!$comment->getTarget()->getWallOwner()->canBeViewedBy($this->getUser() ?? NULL)) {
-            $this->fail(8, "Access denied");
-        }
-
+        if(!$comment) $this->fail(100, "One of the parameters specified was missing or invalid");;
         if(!$comment->canBeDeletedBy($this->user))
             $this->fail(7, "Access denied");
 
@@ -922,51 +876,27 @@ final class Wall extends VKAPIRequestHandler
         return 1;
     }
 
-    function checkCopyrightLink(string $link) {
-        $res = (int)(!is_null($link) && !empty($link) && preg_match("/^(http:\/\/|https:\/\/)*[а-яА-ЯёЁa-z0-9\-_]+(\.[а-яА-ЯёЁa-z0-9\-_]+)+(\/\S*)*$/iu", $link) && iconv_strlen($link) < 50);
-
-        if($res == 0) {
-            $this->fail(3102, "Specified link is incorrect");
-        }
-
-        return $res;
-    }
-
-    function pin(int $owner_id, int $post_id) {
+    function delete(int $owner_id, int $post_id)
+    {
         $this->requireUser();
         $this->willExecuteWriteAction();
 
-        $post = (new PostsRepo)->getPostById($owner_id, $post_id);
+        $post = (new PostsRepo)->getPostById($owner_id, $post_id, true);
         if(!$post || $post->isDeleted())
-            $this->fail(361, "Invalid post");
+            $this->fail(583, "Invalid post");
 
-        if(!$post->canBePinnedBy($this->getUser()))
-            $this->fail(14, "Access to pinning post denied");
+        $wallOwner = $post->getWallOwner();
+        
+        if($post->getTargetWall() < 0 && !$post->getWallOwner()->canBeModifiedBy($this->getUser()) && $post->getWallOwner()->getWallType() != 1 && $post->getSuggestionType() == 0)
+            $this->fail(12, "Access denied: you can't delete your accepted post.");
 
-        if(!$post->isPinned()) {
-            $post->pin();
+        if($post->getOwnerPost() == $this->getUser()->getId() || $post->getTargetWall() == $this->getUser()->getId() || $owner_id < 0 && $wallOwner->canBeModifiedBy($this->getUser())) {
+            $post->unwire();
+            $post->delete();
+
             return 1;
         } else {
-            $this->fail(50, "Post is already pinned");
-        }
-    }
-
-    function unpin(int $owner_id, int $post_id) {
-        $this->requireUser();
-        $this->willExecuteWriteAction();
-
-        $post = (new PostsRepo)->getPostById($owner_id, $post_id);
-        if(!$post || $post->isDeleted())
-            $this->fail(361, "Invalid post");
-
-        if(!$post->canBePinnedBy($this->getUser()))
-            $this->fail(14, "Access to unpinning post denied");
-
-        if($post->isPinned()) {
-            $post->unpin();
-            return 1;
-        } else {
-            $this->fail(50, "Post is not pinned");
+            $this->fail(15, "Access denied");
         }
     }
 
@@ -999,12 +929,6 @@ final class Wall extends VKAPIRequestHandler
         $userVote = array();
         foreach($attachment->getUserVote($user) as $vote)
             $userVote[] = $vote[0];
-        
-        $ownerr = 0;
-
-        if(!is_null($attachment->getAttachedPost())) {
-            $ownerr = $attachment->getAttachedPost()->getOwner() instanceof User ? $attachment->getAttachedPost()->getOwner()->getId() : $attachment->getAttachedPost()->getOwner()->getId() * -1;
-        }
 
         return [
             "type"  => "poll",
@@ -1017,16 +941,16 @@ final class Wall extends VKAPIRequestHandler
                 "can_vote"       => $attachment->canVote($user),
                 "can_report"     => false,
                 "can_share"      => true,
-                "created"        => $attachment->getAttachedPost() ? $attachment->getAttachedPost()->getPublicationTime()->timestamp() : 0,
+                "created"        => 0,
                 "id"             => $attachment->getId(),
-                "owner_id"       => $ownerr,
+                "owner_id"       => $attachment->getOwner()->getId(),
                 "question"       => $attachment->getTitle(),
                 "votes"          => $attachment->getVoterCount(),
                 "disable_unvote" => $attachment->isRevotable(),
                 "anonymous"      => $attachment->isAnonymous(),
                 "answer_ids"     => $userVote,
                 "answers"        => $answers,
-                "author_id"      => $ownerr,
+                "author_id"      => $attachment->getOwner()->getId(),
             ]
         ];
     }

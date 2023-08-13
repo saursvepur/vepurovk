@@ -307,7 +307,7 @@ final class Groups extends VKAPIRequestHandler
         !empty($description)        ? $club->setAbout($description) : NULL;
         !empty($screen_name)        ? $club->setShortcode($screen_name) : NULL;
         !empty($website)            ? $club->setWebsite((!parse_url($website, PHP_URL_SCHEME) ? "https://" : "") . $website) : NULL;
-
+        
         try {
             $wall != -1 ? $club->setWall($wall) : NULL;
         } catch(\Exception $e) {
@@ -365,6 +365,7 @@ final class Groups extends VKAPIRequestHandler
             }
 
             $arr->items[] = (object) [
+                "id" => $member->getId(),
                 "first_name" => $member->getFirstName(),
                 "last_name" => $member->getLastName(),
             ];
@@ -477,7 +478,7 @@ final class Groups extends VKAPIRequestHandler
             "title"          => $club->getName(),
             "description"    => $club->getDescription() != NULL ? $club->getDescription() : "",
             "address"        => $club->getShortcode(),
-            "wall"           => $club->getWallType(),
+            "wall"           => $club->getWallType(), # отличается от вкшных но да ладно
             "photos"         => 1,
             "video"          => 0,
             "audio"          => 0,

@@ -185,6 +185,19 @@ final class UserPresenter extends OpenVKPresenter
 
                 if ($this->postParam("marialstatus") <= 8 && $this->postParam("marialstatus") >= 0)
                 $user->setMarital_Status($this->postParam("marialstatus"));
+
+                if ($this->postParam("maritalstatus-user")) {
+                    if (in_array((int) $this->postParam("marialstatus"), [0, 1, 8])) {
+                        $user->setMarital_Status_User(NULL);
+                    } else {
+                        $mUser = (new Users)->getByAddress($this->postParam("maritalstatus-user"));
+                        if ($mUser) {
+                            if ($mUser->getId() !== $this->user->id) {
+                                $user->setMarital_Status_User($mUser->getId());
+                            }
+                        }
+                    }
+                }
                 
                 if ($this->postParam("politViews") <= 9 && $this->postParam("politViews") >= 0)
                 $user->setPolit_Views($this->postParam("politViews"));
@@ -321,6 +334,8 @@ final class UserPresenter extends OpenVKPresenter
         
         $user = $this->users->get((int) $this->postParam("id"));
         if(!$user) exit("Invalid state");
+        if ($user->isServiceAccount())
+            $this->flashFail("err", tr("error"), tr("forbidden"));
         
         $user->toggleSubscription($this->user->identity);
 		
@@ -504,6 +519,9 @@ final class UserPresenter extends OpenVKPresenter
 				
 				if(in_array($this->postParam("main_page"), [0, 1]))
                     $user->setMain_Page((int) $this->postParam("main_page"));
+                
+                if(in_array($this->postParam("paginator"), [0, 1]))
+                    $user->setPaginator_type((int) $this->postParam("paginator"));
             } else if($_GET['act'] === "lMenu") {
                 $settings = [
                     "menu_bildoj"    => "photos",
@@ -514,6 +532,7 @@ final class UserPresenter extends OpenVKPresenter
                     "menu_novajoj"   => "news",
                     "menu_ligiloj"   => "links",
                     "menu_standardo" => "poster",
+                    "menu_aplikoj"   => "apps"
                 ];
                 foreach($settings as $checkbox => $setting)
                     $user->setLeftMenuItemStatus($setting, $this->checkbox($checkbox));
@@ -675,6 +694,9 @@ final class UserPresenter extends OpenVKPresenter
         if($this->user->identity->getCoins() < $value)
             $this->flashFail("err", tr("failed_to_tranfer_points"), tr("you_dont_have_enough_points"));
 
+        if ($receiver->isServiceAccount())
+            $this->flashFail("err", tr("error"), tr("forbidden"));    
+
         if($this->user->id !== $receiver->getId()) {
             $this->user->identity->setCoins($this->user->identity->getCoins() - $value);
             $this->user->identity->save();
@@ -715,6 +737,9 @@ final class UserPresenter extends OpenVKPresenter
 
         if($this->user->identity->getCoins() < $value)
             $this->flashFail("err", tr("failed_to_increase_rating"), tr("you_dont_have_enough_points"));
+
+        if ($receiver->isServiceAccount())
+            $this->flashFail("err", tr("error"), tr("forbidden"));    
 
         $this->user->identity->setCoins($this->user->identity->getCoins() - $value);
         $this->user->identity->save();

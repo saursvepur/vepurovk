@@ -83,6 +83,9 @@
                                         <li>
                                             <a href="/admin">{_admin_overview_summary}</a>
                                         </li>
+                                        <li>
+                                            <a href="/admin/logs">Логи</a>
+                                        </li>
                                     </ul>
                                     <div class="aui-nav-heading">
                                         <strong>{_admin_content}</strong>

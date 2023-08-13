@@ -1146,7 +1146,7 @@ class User extends RowModel
     {
         $this->setOnline(time());
         $this->setClient_name($platform);
-        $this->save();
+        $this->save(false);
 
         return true;
     }
@@ -1164,7 +1164,7 @@ class User extends RowModel
 
     function adminNotify(string $message): bool
     {
-        $admId = OPENVK_ROOT_CONF["openvk"]["preferences"]["support"]["adminAccount"];
+        $admId = (int) OPENVK_ROOT_CONF["openvk"]["preferences"]["support"]["adminAccount"];
         if(!$admId)
             return false;
         else if(is_null($admin = (new Users)->get($admId)))
@@ -1287,6 +1287,11 @@ class User extends RowModel
 
             yield $flist;
         }
+    }
+
+    function getPaginatorType()
+    {
+        return $this->getRecord()->paginator_type;
     }
 	
 	function toVkApiStruct(?User $user = NULL): object

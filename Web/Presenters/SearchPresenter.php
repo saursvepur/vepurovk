@@ -45,7 +45,7 @@ final class SearchPresenter extends OpenVKPresenter
         $invert = $this->queryParam("invert") == 1 ? "ASC" : "DESC";
         $page  = (int) ($this->queryParam("p") ?? 1);
         
-        $this->willExecuteWriteAction();
+       # $this->willExecuteWriteAction();
         if($query != "")
             $this->assertUserLoggedIn();
         

@@ -14,11 +14,8 @@ final class Polls extends VKAPIRequestHandler
     {
         $poll = (new PollsRepo)->get($poll_id);
 
-        if(!$poll)
+        if (!$poll)
             $this->fail(100, "One of the parameters specified was missing or invalid: poll_id is incorrect");
-        
-        if(!$poll->canBeViewedBy($this->getUser()))
-            $this->fail(256, "Access to poll denied");    
         
         $users = array();
         $answers = array();
@@ -35,11 +32,6 @@ final class Polls extends VKAPIRequestHandler
         foreach($poll->getUserVote($this->getUser()) as $vote)
             $userVote[] = $vote[0];
 
-         $ownerr = 0;
-        if(!is_null($poll->getAttachedPost())) {
-            $ownerr = $poll->getAttachedPost()->getOwner() instanceof User ? $poll->getAttachedPost()->getOwner()->getId() : $poll->getAttachedPost()->getOwner()->getId() * -1;
-        }
-
         $response = [
             "multiple"       => $poll->isMultipleChoice(),
             "end_date"       => $poll->endsAt() == NULL ? 0 : $poll->endsAt()->timestamp(),
@@ -49,16 +41,16 @@ final class Polls extends VKAPIRequestHandler
             "can_vote"       => $poll->canVote($this->getUser()),
             "can_report"     => false,
             "can_share"      => true,
-            "created"        => $poll->getAttachedPost() ? $poll->getAttachedPost()->getPublicationTime()->timestamp() : 0,
+            "created"        => 0,
             "id"             => $poll->getId(),
-            "owner_id"       => $ownerr,
+            "owner_id"       => $poll->getOwner()->getId(),
             "question"       => $poll->getTitle(),
             "votes"          => $poll->getVoterCount(),
             "disable_unvote" => $poll->isRevotable(),
             "anonymous"      => $poll->isAnonymous(),
             "answer_ids"     => $userVote,
             "answers"        => $answers,
-            "author_id"      => $ownerr,
+            "author_id"      => $poll->getOwner()->getId(),
         ];
 
         if ($extended) {
@@ -81,12 +73,9 @@ final class Polls extends VKAPIRequestHandler
         if(!$poll)
             $this->fail(251, "Invalid poll id");
 
-        if(!$poll->canBeViewedBy($this->getUser()))
-            $this->fail(256, "Access to poll denied");    
-
         try {
             $poll->vote($this->getUser(), explode(",", $answers_ids));
-            return 0;
+            return 1;
         } catch(AlreadyVotedException $ex) {
             return 0;
         } catch(PollLockedException $ex) {
@@ -106,12 +95,9 @@ final class Polls extends VKAPIRequestHandler
         if(!$poll)
             $this->fail(251, "Invalid poll id");
 
-        if(!$poll->canBeViewedBy($this->getUser()))
-            $this->fail(256, "Access to poll denied");    
-
         try {
             $poll->revokeVote($this->getUser());
-            return 0;
+            return 1;
         } catch(PollLockedException $ex) {
             $this->fail(15, "Access denied: Poll is locked or isn't revotable");
         } catch(InvalidOptionException $ex) {

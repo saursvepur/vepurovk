@@ -38,11 +38,10 @@ final class Notes extends VKAPIRequestHandler
             $this->fail(189, "Note is deleted");
         
         if($note->getOwner()->isDeleted())
-            $this->fail(403, "Access denied: Owner is deleted");
+            $this->fail(403, "Owner is deleted");
 
-        if(!$note->canBeViewedBy($this->getUser() ?? NULL)) {
-            $this->fail(8, "Access denied");
-        }
+        if(!$note->getOwner()->getPrivacyPermission('notes.read', $this->getUser()))
+            $this->fail(43, "No access");
 
         if(empty($message) && empty($attachments))
             $this->fail(100, "Required parameter 'message' missing.");
@@ -148,7 +147,7 @@ final class Notes extends VKAPIRequestHandler
             $this->fail(189, "Note is deleted");
 
         if(!$note->canBeModifiedBy($this->getUser()))
-            $this->fail(403, "Access denied");
+            $this->fail(403, "No access");
 
         !empty($title) ? $note->setName($title) : NULL;
         !empty($text)  ? $note->setSource($text) : NULL;
@@ -190,10 +189,6 @@ final class Notes extends VKAPIRequestHandler
         if(!$user->getPrivacyPermission('notes.read', $this->getUser()))
             $this->fail(43, "Access denied: this user chose to hide his notes");
         
-        if(!$user->canBeViewedBy($this->getUser() ?? NULL)) {
-            $this->fail(8, "Access denied");
-        }
-
         if(empty($note_ids)) {
             $notes = array_slice(iterator_to_array((new NotesRepo)->getUserNotes($user, 1, $count + $offset, $sort == 0 ? "ASC" : "DESC")), $offset);
             $nodez = (object) [
@@ -236,13 +231,12 @@ final class Notes extends VKAPIRequestHandler
         
         if($note->isDeleted())
             $this->fail(189, "Note is deleted");
-        
+
         if(!$note->getOwner() || $note->getOwner()->isDeleted())
             $this->fail(177, "Owner does not exists");
 
-        if(!$note->canBeViewedBy($this->getUser() ?? NULL)) {
-            $this->fail(8, "Access denied");
-        }
+        if(!$note->getOwner()->getPrivacyPermission('notes.read', $this->getUser()))
+            $this->fail(40, "Access denied: this user chose to hide his notes");
 
         return $note->toVkApiStruct();
     }
@@ -259,12 +253,11 @@ final class Notes extends VKAPIRequestHandler
         if($note->isDeleted())
             $this->fail(189, "Note is deleted");
         
-        if(!$note->getOwner() || $note->getOwner()->isDeleted())
-            $this->fail(177, "Error: Owner of note is deleted");
+        if(!$note->getOwner())
+            $this->fail(177, "Owner does not exists");
 
-        if(!$note->canBeViewedBy($this->getUser() ?? NULL)) {
-            $this->fail(8, "Access denied");
-        }
+        if(!$note->getOwner()->getPrivacyPermission('notes.read', $this->getUser()))
+            $this->fail(14, "No access");
         
         $arr = (object) [
             "count" => $note->getCommentsCount(), 

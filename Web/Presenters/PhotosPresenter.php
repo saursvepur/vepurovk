@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 namespace openvk\Web\Presenters;
 use openvk\Web\Models\Entities\{Club, Photo, Album};
-use openvk\Web\Models\Repositories\{Photos, Albums, Users, Clubs};
+use openvk\Web\Models\Repositories\{Photos, Albums, Users, Clubs, User};
 use Nette\InvalidStateException as ISE;
 
 final class PhotosPresenter extends OpenVKPresenter
@@ -27,7 +27,7 @@ final class PhotosPresenter extends OpenVKPresenter
             if(!$user) $this->notFound();
             if (!$user->getPrivacyPermission('photos.read', $this->user->identity ?? NULL))
                 $this->flashFail("err", tr("forbidden"), tr("forbidden_comment"));
-            $this->template->albums  = $this->albums->getUserAlbums($user, $this->queryParam("p") ?? 1);
+            $this->template->albums  = $this->albums->getUserAlbums($user, (int)($this->queryParam("p") ?? 1));
             $this->template->count   = $this->albums->getUserAlbumsCount($user);
             $this->template->owner   = $user;
             $this->template->canEdit = false;
@@ -36,7 +36,7 @@ final class PhotosPresenter extends OpenVKPresenter
         } else {
             $club = (new Clubs)->get(abs($owner));
             if(!$club) $this->notFound();
-            $this->template->albums  = $this->albums->getClubAlbums($club, $this->queryParam("p") ?? 1);
+            $this->template->albums  = $this->albums->getClubAlbums($club, (int)($this->queryParam("p") ?? 1));
             $this->template->count   = $this->albums->getClubAlbumsCount($club);
             $this->template->owner   = $club;
             $this->template->canEdit = false;
@@ -158,6 +158,9 @@ final class PhotosPresenter extends OpenVKPresenter
     {
         $photo = $this->photos->getByOwnerAndVID($ownerId, $photoId);
         if(!$photo || $photo->isDeleted()) $this->notFound();
+
+        if ($photo->getOwner() instanceof User && $photo->getOwner()->isServiceAccount())
+            $this->notFound();
         
         if(!is_null($this->queryParam("from"))) {
             if(preg_match("%^album([0-9]++)$%", $this->queryParam("from"), $matches) === 1) {

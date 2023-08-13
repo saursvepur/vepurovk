@@ -2318,6 +2318,13 @@ table td[width="120"] {
     border-top:1px solid #E5E7E6;
 }
 
+.showMore {
+    text-align: center;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    cursor: pointer;
+}
+
 .searchTips
 {
     position: absolute;

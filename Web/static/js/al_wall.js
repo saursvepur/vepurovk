@@ -296,7 +296,7 @@ function OpenMiniature(e, photo, post, photo_id) {
     return u(".ovk-photo-view-dimmer");
 }
 
-u("#write > form").on("keydown", function(event) {
+$(document).on("keydown", "#write > form", function(event) {
     if(event.ctrlKey && event.keyCode === 13)
         this.submit();
 });
@@ -329,6 +329,8 @@ var tooltipClientNoInfoTemplate = Handlebars.compile(`
         </tr>
     </table>
 `);
+
+function initTooltips() {
 
 tippy(".client_app", {
     theme: "light vk",
@@ -366,6 +368,10 @@ tippy(".client_app", {
         }
     }
 });
+
+}
+
+initTooltips()
 
 function addNote(textareaId, nid)
 {
@@ -502,7 +508,7 @@ $(document).on("click", "#publish_post", async (e) => {
             e.currentTarget.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.outerHTML = ""
         }
 
-        if(document.querySelectorAll(".post").length < 1 && post.new_count > 0) {
+        if(document.querySelectorAll(".post").length < 1 && post.new_count > 0 && document.querySelector(".paginator") != null) {
             loadMoreSuggestedPosts()
         }
     }), Function.noop]);
@@ -563,7 +569,7 @@ $(document).on("click", "#decline_post", async (e) => {
         }
     }
 
-    if(document.querySelectorAll(".post").length < 1 && post > 0) {
+    if(document.querySelectorAll(".post").length < 1 && post > 0 && document.querySelector(".paginator") != null) {
         loadMoreSuggestedPosts()
     }
 })
@@ -1009,3 +1015,81 @@ $(document).on("click", "#shareVideo", async (e) => {
         document.getElementById("group").setAttribute("disabled", "disabled")
     }
 })
+
+$(document).on("click", ".showMore", async (e) => {
+    e.currentTarget.innerHTML = `<img id="loader" src="/assets/packages/static/openvk/img/loading_mini.gif">`
+
+    let url = new URL(location.href)
+    let newPage = Number(e.currentTarget.dataset.page) + 1
+    url.searchParams.set("p", newPage)
+    url.searchParams.set("posts", 10)
+
+    let xhr = new XMLHttpRequest
+    xhr.open("GET", url)
+
+    let container = document.querySelector(".infContainer")
+
+    function _errorWhenLoading() {
+        e.currentTarget.innerHTML = tr("error_loading_objects")
+    }
+
+    function _updateButton() {
+        e.currentTarget.setAttribute("data-page", newPage)
+        e.currentTarget.innerHTML = tr("show_more")
+
+        container.append(e.currentTarget)
+
+        console.info("[пэйдж блять] " + newPage + " из " + e.currentTarget.dataset.pageсount)
+        if(Number(e.currentTarget.dataset.pageсount) == newPage) {
+            e.currentTarget.remove()
+        }
+    }
+
+    xhr.onload = () => {
+        let parser = new DOMParser
+        let result = parser.parseFromString(xhr.responseText, "text/html");
+        let objects = result.querySelectorAll(".infObj")
+
+        for(const obj of objects) {
+            container.insertAdjacentHTML("beforeend", obj.outerHTML)
+        }
+
+        if(result.querySelectorAll("textarea").length > 0) {
+            for(const trea of result.querySelectorAll("textarea")) {
+                setupWallPostInputHandlers(trea.dataset.id)
+
+                u("#post-buttons" + trea.dataset.id + " .postFileSel").on("change", function() {
+                    handleUpload.bind(this, trea.dataset.id)();
+                });
+            }
+        }
+
+        bsdnHydrate()
+
+        initMentions()
+        initTooltips()
+        _updateButton()
+    }
+
+    xhr.onerror = () => {_errorWhenLoading()}
+    xhr.ontimeout = () => {_errorWhenLoading()}
+
+    xhr.send()
+})
+
+let showMoreObserver = new IntersectionObserver(entries => {
+    entries.forEach(x => {
+        if(x.isIntersecting) {
+            $(".showMore").click()
+        }
+    })
+}, {
+    root: null,
+    rootMargin: "0px",
+    threshold: 0
+})
+
+let showMore = document.querySelector('.showMore');
+
+if(showMore != null)
+    showMoreObserver.observe(showMore);

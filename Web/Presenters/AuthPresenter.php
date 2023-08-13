@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 namespace openvk\Web\Presenters;
 use openvk\Web\Models\Entities\{IP, User, PasswordReset, EmailVerification, FriendsList};
-use openvk\Web\Models\Repositories\{IPs, Users, Restores, Verifications};
+use openvk\Web\Models\Repositories\{IPs, Logs, Users, Restores, Verifications};
 use openvk\Web\Models\Exceptions\InvalidUserNameException;
 use openvk\Web\Util\Validator;
 use Chandler\Session\Session;
@@ -110,7 +110,7 @@ final class AuthPresenter extends OpenVKPresenter
                 $this->flashFail("err", tr("failed_to_register"), tr("user_already_exists"));
 
             $user->setUser($chUser->getId());
-            $user->save();
+            $user->save(false);
 			
 			$f1 = new FriendsList;
             $f1->setOwner($user->getId());
@@ -153,7 +153,9 @@ final class AuthPresenter extends OpenVKPresenter
             }
             
             $this->authenticator->authenticate($chUser->getId());
+            (new Logs)->create($user->getId(), "profiles", "openvk\\Web\\Models\\Entities\\User", 0, $user, $user, $_SERVER["REMOTE_ADDR"], $_SERVER["HTTP_USER_AGENT"]);
             $this->redirect("/id" . $user->getId());
+            $user->save();
         }
     }
     

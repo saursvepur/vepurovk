@@ -103,7 +103,7 @@
     </div>
 
     <div n:if="!is_null($suggestedPostsCountByEveryone) && $suggestedPostsCountByEveryone > 0" class="sugglist">
-        <a href="/club{$club->getId()}/suggested/all">{tr("show_suggested_posts_everyone", $suggestedPostsCountByEveryone)}</a>
+        <a href="/club{$club->getId()}/suggested">{tr("suggested_by_everyone", $suggestedPostsCountByEveryone)}</a>
     </div>
     
     {presenter "openvk!Wall->wallEmbedded", -$club->getId()}
@@ -391,6 +391,7 @@
             </script>
             <a href="/id{$club->getOwner()->getId()}" id="profile_link">{_go_to_owner}</a>
             <a href="/admin/clubs/id{$club->getId()}" id="profile_link">{_manage_group_action}</a>
+            <a href="/admin/logs?obj_id={$club->getId()}&obj_type=Club" class="profile_link">Последние действия</a>
             {if $club->isBanned()}
                 <a href="javascript:unbanClub()" id="profile_link">{_unban_group}</a>
             {else}

@@ -7,8 +7,7 @@
 
 {block content}
     {presenter "openvk!Support->knowledgeBaseArticle", "about"}
-	<p>Нас уже <b>{$stats->all}</b> пользователей и из них <b>{$stats->online}</b>
-         сейчас в сети.</p>
+	<p>Нас уже <b>{$stats->all}</b> пользователей</p>
 		 <br>
 		 <p>С помощью этого сайта Вы можете:</p>
 <ul>
@@ -26,5 +25,4 @@
         <a class="button" style="cursor: pointer;" href="/reg">{_"registration"}</a>
 	</p>
     </center>
-    {* TO-DO: Add statistics about this instance as on mastodon.social *}
 {/block}

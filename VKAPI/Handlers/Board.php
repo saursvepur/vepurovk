@@ -22,10 +22,6 @@ final class Board extends VKAPIRequestHandler
             $this->fail(403, "Invalid club");
         }
 
-        if($club->isDeleted()) {
-            $this->fail(43, "Club was deleted");
-        }
-
         if(!$club->canBeModifiedBy($this->getUser()) && !$club->isEveryoneCanCreateTopics()) {
             $this->fail(403, "Access to club denied");
         }
@@ -115,10 +111,6 @@ final class Board extends VKAPIRequestHandler
             return 0;
         }
 
-        if($topic->getClub()->isDeleted()) {
-            $this->fail(43, "Club was deleted");
-        }
-
         if(!$topic->isClosed()) {
             $topic->setClosed(1);
             $topic->save();
@@ -138,16 +130,8 @@ final class Board extends VKAPIRequestHandler
 
         $topic = (new TopicsRepo)->getTopicById($group_id, $topic_id);
 
-        if(!$topic || $topic->isClosed()) {
-            $this->fail(100, "Topic is deleted or invalid.");
-        }
-
-        if(!$topic->getClub() || $topic->getClub()->isDeleted()) {
-            $this->fail(43, "Club was deleted");
-        }
-
-        if(!$topic->canBeViewedBy($this->getUser())) {
-            $this->fail(8, "Access denied");
+        if(!$topic || $topic->isDeleted() || $topic->isClosed()) {
+            $this->fail(100, "Topic is deleted, closed or invalid.");
         }
 
         $flags = 0;
@@ -240,10 +224,6 @@ final class Board extends VKAPIRequestHandler
             return 0;
         }
 
-        if($topic->getClub()->isDeleted()) {
-            return 0;
-        }
-
         $topic->deleteTopic();
 
         return 1;
@@ -278,10 +258,6 @@ final class Board extends VKAPIRequestHandler
             return 0;
         }
 
-        if($topic->getClub()->isDeleted()) {
-            return 0;
-        }
-
         $topic->setTitle(ovk_proc_strtr($title, 127));
 
         $topic->save();
@@ -297,10 +273,6 @@ final class Board extends VKAPIRequestHandler
         $topic = (new TopicsRepo)->getTopicById($group_id, $topic_id);
 
         if(!$topic || !$topic->getClub() || !$topic->getClub()->canBeModifiedBy($this->getUser())) {
-            return 0;
-        }
-
-        if($topic->getClub()->isDeleted()) {
             return 0;
         }
 
@@ -321,14 +293,6 @@ final class Board extends VKAPIRequestHandler
 
         if(!$topic || !$topic->getClub() || $topic->isDeleted()) {
             $this->fail(5, "Invalid topic");
-        }
-
-        if(!$topic->canBeViewedBy($this->getUser())) {
-            $this->fail(8, "Access denied");
-        }
-
-        if(!$topic->getClub() || $topic->getClub()->isDeleted()) {
-            $this->fail(666, "Club was deleted or banned");
         }
 
         $arr = [
@@ -361,14 +325,6 @@ final class Board extends VKAPIRequestHandler
 
         $arr = [];
         $club = (new ClubsRepo)->get($group_id);
-
-        if(!$club || $club->isDeleted()) {
-            $this->fail(666, "Club was deleted or banned");
-        }
-
-        if(!$club->canBeViewedBy($this->getUser())) {
-            $this->fail(8, "Access denied");
-        }
 
         $topics = array_slice(iterator_to_array((new TopicsRepo)->getClubTopics($club, 1, $count + $offset)), $offset);
         $arr["count"] = (new TopicsRepo)->getClubTopicsCount($club);
@@ -409,10 +365,6 @@ final class Board extends VKAPIRequestHandler
             return 0;
         }
 
-        if(!$topic->getClub() || $topic->getClub()->isDeleted()) {
-            $this->fail(666, "Club was deleted or banned");
-        }
-
         if($topic->isClosed()) {
             $topic->setClosed(0);
             $topic->save();
@@ -435,10 +387,6 @@ final class Board extends VKAPIRequestHandler
 
         if(!$topic || !$topic->getClub() || !$topic->getClub()->canBeModifiedBy($this->getUser())) {
             return 0;
-        }
-
-        if(!$topic->getClub() || $topic->getClub()->isDeleted()) {
-            $this->fail(666, "Club was deleted or banned");
         }
 
         if($topic->isPinned()) {
