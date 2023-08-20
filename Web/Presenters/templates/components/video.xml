@@ -6,8 +6,10 @@
         <td valign="top">
             <div class="video-preview" id="videoOpen" data-id="{$video->getId()}">
                 <a href="/video{$video->getPrettyId()}">
-                    <img src="{$video->getThumbnailURL()}"
-                    style="max-width: 170px; max-height: 127px; margin: auto;" >
+                    <div class="video-preview">
+                            <img src="{$video->getThumbnailURL()}"
+                            style="max-width: 170px; max-height: 127px; margin: auto;" >
+                        </div>
                 </a>
             </div>
         </td>

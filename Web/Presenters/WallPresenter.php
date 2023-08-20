@@ -341,9 +341,8 @@ final class WallPresenter extends OpenVKPresenter
                 $post->setSource($this->postParam("source"));
             }
 
-            if($wall < 0 && !$wallOwner->canBeModifiedBy($this->user->identity) && $wallOwner->getWallType() == 2) {
+            if($wall < 0 && !$wallOwner->canBeModifiedBy($this->user->identity) && $wallOwner->getWallType() == 2)
                 $post->setSuggested(1);
-            }
 
             $post->save();
         } catch (\LengthException $ex) {
@@ -391,9 +390,8 @@ final class WallPresenter extends OpenVKPresenter
                 $owner = $wallOwner->getOwner();
                 (new NewSuggestedPostsNotification($owner, $wallOwner))->emit();
 
-                foreach($managers as $manager) {
+                foreach($managers as $manager) 
                     (new NewSuggestedPostsNotification($manager->getUser(), $wallOwner))->emit();
-                }
             }
 
             $this->redirect("/club".$wallOwner->getId()."/suggested");
@@ -530,6 +528,9 @@ final class WallPresenter extends OpenVKPresenter
             else $canBeDeletedByOtherUser = false;
 
         if(!is_null($user)) {
+            if($post->getTargetWall() < 0 && !$post->getWallOwner()->canBeModifiedBy($this->user->identity) && $post->getWallOwner()->getWallType() != 1 && $post->getSuggestionType() == 0)
+                $this->flashFail("err", tr("failed_to_delete_post"), tr("error_deleting_suggested"));
+
             if($post->getOwnerPost() == $user || $post->getTargetWall() == $user || $canBeDeletedByOtherUser) {
                 $post->unwire();
                 $post->delete();

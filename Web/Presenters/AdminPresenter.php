@@ -3,20 +3,21 @@ namespace openvk\Web\Presenters;
 use Chandler\Database\Log;
 use Chandler\Database\Logs;
 use openvk\Web\Models\Entities\{Voucher, Gift, GiftCategory, User, BannedLink};
-use openvk\Web\Models\Repositories\{Bans, ChandlerGroups, ChandlerUsers, Photos, Posts, Users, Clubs, Videos, Vouchers, Gifts, BannedLinks};
+use openvk\Web\Models\Repositories\{Bans, ChandlerGroups, ChandlerUsers, Audios, Photos, Posts, Users, Clubs, Videos, Vouchers, Gifts, BannedLinks};
 use Chandler\Database\DatabaseConnection;
 
 final class AdminPresenter extends OpenVKPresenter
 {
     private $users;
     private $clubs;
+    private $audios;
     private $vouchers;
     private $gifts;
     private $bannedLinks;
     private $chandlerGroups;
     private $logs;
 
-    function __construct(Users $users, Clubs $clubs, Vouchers $vouchers, Gifts $gifts, BannedLinks $bannedLinks, ChandlerGroups $chandlerGroups)
+    function __construct(Users $users, Clubs $clubs, Vouchers $vouchers, Gifts $gifts, BannedLinks $bannedLinks, ChandlerGroups $chandlerGroups, Audios $audios)
     {
         $this->users    = $users;
         $this->clubs    = $clubs;
@@ -25,6 +26,8 @@ final class AdminPresenter extends OpenVKPresenter
         $this->bannedLinks = $bannedLinks;
         $this->chandlerGroups = $chandlerGroups;
         $this->logs = DatabaseConnection::i()->getContext()->table("ChandlerLogs");
+
+        $this->audios = $audios;
         
         parent::__construct();
     }
@@ -42,6 +45,15 @@ final class AdminPresenter extends OpenVKPresenter
         
         $count = $repo->find($query)->size();
         return $repo->find($query)->page($page, 20);
+    }
+
+    private function searchPlaylists(&$count)
+    {
+        $query = $this->queryParam("q") ?? "";
+        $page  = (int) ($this->queryParam("p") ?? 1);
+
+        $count = $this->audios->findPlaylists($query)->size();
+        return $this->audios->findPlaylists($query)->page($page, 20);
     }
     
     function onStartup(): void
@@ -554,6 +566,48 @@ final class AdminPresenter extends OpenVKPresenter
         if(!$user) $this->notFound();
 
         $this->redirect("/admin/users/id" . $user->getId());
+    }
+
+    function renderMusic(): void
+    {
+        $this->template->mode = in_array($this->queryParam("act"), ["audios", "playlists"]) ? $this->queryParam("act") : "audios";
+        if ($this->template->mode === "audios")
+            $this->template->audios = $this->searchResults($this->audios, $this->template->count);
+        else
+            $this->template->playlists = $this->searchPlaylists($this->template->count);
+    }
+
+    function renderEditMusic(int $audio_id): void
+    {
+        $audio = $this->audios->get($audio_id);
+        $this->template->audio = $audio;
+
+        if ($_SERVER["REQUEST_METHOD"] === "POST") {
+            $audio->setName($this->postParam("name"));
+            $audio->setPerformer($this->postParam("performer"));
+            $audio->setLyrics($this->postParam("text"));
+            $audio->setGenre($this->postParam("genre"));
+            $audio->setOwner((int) $this->postParam("owner"));
+            $audio->setExplicit(!empty($this->postParam("explicit")));
+            $audio->setDeleted(!empty($this->postParam("deleted")));
+            $audio->setWithdrawn(!empty($this->postParam("withdrawn")));
+            $audio->save();
+        }
+    }
+
+    function renderEditPlaylist(int $playlist_id): void
+    {
+        $playlist = $this->audios->getPlaylist($playlist_id);
+        $this->template->playlist = $playlist;
+
+        if ($_SERVER["REQUEST_METHOD"] === "POST") {
+            $playlist->setName($this->postParam("name"));
+            $playlist->setDescription($this->postParam("description"));
+            $playlist->setCover_Photo_Id((int) $this->postParam("photo"));
+            $playlist->setOwner((int) $this->postParam("owner"));
+            $playlist->setDeleted(!empty($this->postParam("deleted")));
+            $playlist->save();
+        }
     }
 
     function renderLogs(): void

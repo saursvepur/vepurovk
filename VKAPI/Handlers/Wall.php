@@ -49,13 +49,13 @@ final class Wall extends VKAPIRequestHandler
                 $cnt       = $posts->getPostCountOnUserWall($owner_id);
                 break;
             case "owner":
-                $this->fail(66666, "Not implemented :(");
+                $this->fail(66666, "Not implemented");
                 break;
             case "others":
-                $this->fail(66666, "Not implemented :(");
+                $this->fail(66666, "Not implemented");
                 break; 
             case "postponed":
-                $this->fail(66666, "Otlojka is not implemented :)");
+                $this->fail(66666, "Postponed posts are not implemented.");
                 break;
             case "suggests":
                 if($owner_id < 0) {
@@ -149,12 +149,22 @@ final class Wall extends VKAPIRequestHandler
                 ];
             }
 
+            $postType = "post";
+            $signerId = NULL;
+            if($post->getSuggestionType() != 0)
+                $postType = "suggest";
+
+            if($post->isSigned()) {
+                $actualAuthor = $post->getOwner(false);
+                $signerId     = $actualAuthor->getId();
+            }
+
             $items[] = (object)[
                 "id"           => $post->getVirtualId(),
                 "from_id"      => $from_id,
                 "owner_id"     => $post->getTargetWall(),
                 "date"         => $post->getPublicationTime()->timestamp(),
-                "post_type"    => "post",
+                "post_type"    => $postType,
                 "text"         => $post->getText(false),
                 "copy_history" => $repost,
                 "can_edit"     => 0, # TODO
@@ -166,6 +176,7 @@ final class Wall extends VKAPIRequestHandler
                 "is_explicit"  => $post->isExplicit(),
                 "attachments"  => $attachments,
                 "post_source"  => $post_source,
+                "signer_id"    => $signerId,
                 "comments"     => (object)[
                     "count"    => $post->getCommentsCount(),
                     "can_post" => 1
@@ -186,6 +197,9 @@ final class Wall extends VKAPIRequestHandler
                 $profiles[] = $from_id;
             else
                 $groups[]   = $from_id * -1;
+
+                /*if($post->isSigned())
+                    $profiles[] = $post->getOwner(false)->getId();*/
 
             $attachments = NULL; # free attachments so it will not clone everythingg
         }
@@ -324,12 +338,23 @@ final class Wall extends VKAPIRequestHandler
                     ];
                 }
 
+                # TODO: $post->getVkApiType()
+                $postType = "post";
+                $signerId = NULL;
+                if($post->getSuggestionType() != 0) 
+                    $postType = "suggest";
+
+                if($post->isSigned()) {
+                    $actualAuthor = $post->getOwner(false);
+                    $signerId     = $actualAuthor->getId();
+                }
+
                 $items[] = (object)[
                     "id"           => $post->getVirtualId(),
                     "from_id"      => $from_id,
                     "owner_id"     => $post->getTargetWall(),
                     "date"         => $post->getPublicationTime()->timestamp(),
-                    "post_type"    => "post",
+                    "post_type"    => $postType,
                     "text"         => $post->getText(false),
                     "copy_history" => $repost,
                     "can_edit"     => 0, # TODO
@@ -340,6 +365,7 @@ final class Wall extends VKAPIRequestHandler
                     "is_pinned"    => $post->isPinned(),
                     "is_explicit"  => $post->isExplicit(),
                     "post_source"  => $post_source,
+                    "signer_id"    => $signerId,
                     "attachments"  => $attachments,
                     "comments"     => (object)[
                         "count"    => $post->getCommentsCount(),
@@ -361,6 +387,9 @@ final class Wall extends VKAPIRequestHandler
                     $profiles[] = $from_id;
                 else
                     $groups[]   = $from_id * -1;
+
+                    /*if($post->isSigned())
+                        $profiles[] = $post->getOwner(false)->getId();*/
 
                 $attachments = NULL; # free attachments so it will not clone everything
                 $repost = NULL;      # same
@@ -439,9 +468,8 @@ final class Wall extends VKAPIRequestHandler
         if($canPost == false) $this->fail(15, "Access denied");
 
         if($post_id > 0) {
-            if($owner_id > 0) {
+            if($owner_id > 0)
                 $this->fail(62, "Suggested posts available only at groups");
-            }
 
             $post = (new PostsRepo)->getPostById($owner_id, $post_id, true);
 
@@ -508,9 +536,8 @@ final class Wall extends VKAPIRequestHandler
             $post->setFlags($flags);
             $post->setApi_Source_Name($this->getPlatform());
 
-            if($owner_id < 0 && !$wallOwner->canBeModifiedBy($this->getUser()) && $wallOwner->getWallType() == 2) {
+            if($owner_id < 0 && !$wallOwner->canBeModifiedBy($this->getUser()) && $wallOwner->getWallType() == 2)
                 $post->setSuggested(1);
-            }
 
             $post->save();
         } catch(\LogicException $ex) {

@@ -149,17 +149,16 @@ class Wall implements Handler
         $flags = 0;
         $flags |= 0b10000000;
 
-        if($sign) {
+        if($sign)
             $flags |= 0b01000000;
-        }
 
         $post->setSuggested(0);
         $post->setCreated(time());
+        $post->setApi_Source_Name(NULL);
         $post->setFlags($flags);
         
-        if(mb_strlen($content) > 0) {
+        if(mb_strlen($content) > 0) 
             $post->setContent($content);
-        }
 
         $post->save();
 

@@ -33,12 +33,11 @@ final class GroupPresenter extends OpenVKPresenter
             $this->template->topics      = (new Topics)->getLastTopics($club, 3);
             $this->template->topicsCount = (new Topics)->getClubTopicsCount($club);
 
-            if(!is_null($this->user->identity) && !$club->canBeModifiedBy($this->user->identity) && $club->getWallType() == 2) {
-                $this->template->suggestedPostsCountByUser = (new Posts)->getSuggestedPostsCountByUser($club->getId(), $this->user->id);
-            }
-
-            if(!is_null($this->user->identity) && $club->canBeModifiedBy($this->user->identity) && $club->getWallType() == 2) {
-                $this->template->suggestedPostsCountByEveryone = (new Posts)->getSuggestedPostsCount($club->getId());
+            if(!is_null($this->user->identity) && $club->getWallType() == 2) {
+                if(!$club->canBeModifiedBy($this->user->identity))
+                    $this->template->suggestedPostsCountByUser = (new Posts)->getSuggestedPostsCountByUser($club->getId(), $this->user->id);
+                else
+                    $this->template->suggestedPostsCountByEveryone = (new Posts)->getSuggestedPostsCount($club->getId());
             }
 
 			$this->template->links       = (new Links)->getByOwnerId($club->getId() * -1, 1, 5);
@@ -225,7 +224,7 @@ final class GroupPresenter extends OpenVKPresenter
 	        try {
                 $club->setWall(empty($this->postParam("wall")) ? 0 : (int)$this->postParam("wall"));
             } catch(\Exception $e) {
-                $this->flashFail("err", "Fuck you", "");
+                $this->flashFail("err", tr("error"), tr("error_invalid_wall_value"));
             }
             
             $club->setAdministrators_List_Display(empty($this->postParam("administrators_list_display")) ? 0 : $this->postParam("administrators_list_display"));

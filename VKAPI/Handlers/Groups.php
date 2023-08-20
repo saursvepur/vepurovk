@@ -3,6 +3,7 @@ namespace openvk\VKAPI\Handlers;
 use openvk\Web\Models\Repositories\Clubs as ClubsRepo;
 use openvk\Web\Models\Repositories\Users as UsersRepo;
 use openvk\Web\Models\Entities\Club;
+use openvk\Web\Models\Repositories\Posts as PostsRepo;
 
 final class Groups extends VKAPIRequestHandler
 {
@@ -81,6 +82,19 @@ final class Groups extends VKAPIRequestHandler
                             case "members_count":
                                 $rClubs[$i]->members_count = $usr->getFollowersCount();
                                 break;
+                            case "can_suggest":
+                                $rClubs[$i]->can_suggest = !$usr->canBeModifiedBy($this->getUser()) && $usr->getWallType() == 2;
+                                break;
+                            # unstandard feild
+                            case "suggested_count":
+                                if($usr->getWallType() != 2) {
+                                    $rClubs[$i]->suggested_count = NULL;
+                                    break;
+                                }
+
+                                $rClubs[$i]->suggested_count = $usr->getSuggestedPostsCount($this->getUser());
+
+                                break;    
                         }
                     }
                 }
@@ -188,7 +202,19 @@ final class Groups extends VKAPIRequestHandler
                         case "description":
 			                $response[$i]->description = $clb->getDescription();
                             break;
-			            case "contacts":
+			            case "can_suggest":
+                            $response[$i]->can_suggest = !$clb->canBeModifiedBy($this->getUser()) && $clb->getWallType() == 2;
+                            break;
+                        # unstandard feild
+                        case "suggested_count":
+                            if($clb->getWallType() != 2) {
+                                $response[$i]->suggested_count = NULL;
+                                break;
+                            }
+
+                            $response[$i]->suggested_count = $clb->getSuggestedPostsCount($this->getUser());
+                            break;
+                        case "contacts":
                             $contacts;
                             $contactTmp = $clb->getManagers(1, true);
 
