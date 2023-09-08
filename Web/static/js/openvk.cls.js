@@ -786,3 +786,15 @@ function showGroupDeleteDialog(id)
 
     document.querySelector(".ovk-diag-body").style.padding = "10px"
 }
+
+$(document).on("scroll", () => {
+    if($(document).scrollTop() > $(".sidebar").height() + 50) {
+        $(".floating_sidebar")[0].classList.add("show");
+    } else if($(".floating_sidebar")[0].classList.contains("show")) {
+        $(".floating_sidebar")[0].classList.remove("show");
+        $(".floating_sidebar")[0].classList.add("hide_anim");
+        setTimeout(() => {
+            $(".floating_sidebar")[0].classList.remove("hide_anim");
+        }, 250);
+    }
+})

@@ -3,7 +3,7 @@ namespace openvk\Web\Presenters;
 use openvk\Web\Models\Exceptions\TooMuchOptionsException;
 use openvk\Web\Models\Entities\{Poll, Post, Photo, Video, Club, User};
 use openvk\Web\Models\Entities\Notifications\{MentionNotification, NewSuggestedPostsNotification, RepostNotification, WallPostNotification};
-use openvk\Web\Models\Repositories\{Posts, Users, Clubs, Albums, Notes};
+use openvk\Web\Models\Repositories\{Posts, Users, Clubs, Albums, Notes, Comments};
 use Chandler\Database\DatabaseConnection;
 use Nette\InvalidStateException as ISE;
 use Bhaktaraz\RSSGenerator\Item;
@@ -78,11 +78,32 @@ final class WallPresenter extends OpenVKPresenter
         $this->template->oObj = $owner;
         if($user < 0)
             $this->template->club = $owner;
+
+        $iterator = NULL;
+        $count = 0;
+        $type = $this->queryParam("type") ?? "all";
+
+        switch($type) {
+            default:
+            case "all":
+                $iterator = $this->posts->getPostsFromUsersWall($user, (int) ($_GET["p"] ?? 1));
+                $count = $this->posts->getPostCountOnUserWall($user);
+                break;
+            case "owners":
+                $iterator = $this->posts->getOwnersPostsFromWall($user, (int) ($_GET["p"] ?? 1));
+                $count = $this->posts->getOwnersCountOnUserWall($user);
+                break;
+            case "others":
+                $iterator = $this->posts->getOthersPostsFromWall($user, (int) ($_GET["p"] ?? 1));
+                $count = $this->posts->getOthersCountOnUserWall($user);
+                break;
+        }
         
         $this->template->owner   = $user;
         $this->template->canPost = $canPost;
-        $this->template->count   = $this->posts->getPostCountOnUserWall($user);
-        $this->template->posts   = iterator_to_array($this->posts->getPostsFromUsersWall($user, (int) ($_GET["p"] ?? 1)));
+        $this->template->count   = $count;
+        $this->template->type    = $type;
+        $this->template->posts   = iterator_to_array($iterator);
         $this->template->paginatorConf = (object) [
             "count"   => $this->template->count,
             "page"    => (int) ($_GET["p"] ?? 1),
@@ -562,5 +583,64 @@ final class WallPresenter extends OpenVKPresenter
         
         # TODO localize message based on language and ?act=(un)pin
         $this->flashFail("succ", tr("information_-1"), tr("changes_saved_comment"));
+    }
+
+    function renderEdit()
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
+
+        if($_SERVER["REQUEST_METHOD"] !== "POST")
+            $this->redirect("/id0");
+
+        if($this->postParam("type") == "post")
+            $post = $this->posts->get((int)$this->postParam("postid"));
+        else
+            $post = (new Comments)->get((int)$this->postParam("postid"));
+
+        if(!$post || $post->isDeleted())
+            $this->returnJson(["error" => "Invalid post"]);
+
+        if(!$post->canBeEditedBy($this->user->identity))
+            $this->returnJson(["error" => "Access denied"]);
+
+        $attachmentsCount = sizeof(iterator_to_array($post->getChildren()));
+
+        if(empty($this->postParam("newContent")) && $attachmentsCount < 1)
+            $this->returnJson(["error" => "Empty post"]);
+
+        $post->setEdited(time());
+
+        try {
+            $post->setContent($this->postParam("newContent"));
+        } catch(\LengthException $e) {
+            $this->returnJson(["error" => $e->getMessage()]);
+        }
+
+        if($this->postParam("type") === "post") {
+            $post->setNsfw($this->postParam("nsfw") == "true");
+            $flags = 0;
+
+            if($post->getTargetWall() < 0 && $post->getWallOwner()->canBeModifiedBy($this->user->identity)) {
+                if($this->postParam("fromgroup") == "true") {
+                    $flags |= 0b10000000;
+                    $post->setFlags($flags);
+                } else
+                    $post->setFlags($flags);
+            }
+        }
+
+        $post->save(true);
+
+        $this->returnJson(["error"    => "no", 
+                        "new_content" => $post->getText(), 
+                        "new_edited"  => (string)$post->getEditTime(),
+                        "nsfw"        => $this->postParam("type") === "post" ? (int)$post->isExplicit() : 0,
+                        "from_group"  => $this->postParam("type") === "post" && $post->getTargetWall() < 0 ?
+                        ((int)$post->isPostedOnBehalfOfGroup()) : "false",
+                        "author"      => [
+                            "name"    => $post->getOwner()->getCanonicalName(),
+                            "avatar"  => $post->getOwner()->getAvatarUrl()
+                        ]]);
     }
 }

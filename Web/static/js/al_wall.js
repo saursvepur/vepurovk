@@ -448,168 +448,112 @@ async function showArticle(note_id) {
     u("body").addClass("article");
 }
 
-$(document).on("click", "#publish_post", async (e) => {
-    let id = Number(e.currentTarget.dataset.id)
-    let post;
-    let body = `
-        <textarea id="pooblish" style="max-height:500px;resize:vertical;min-height:54px;"></textarea>
-        <label><input type="checkbox" id="signatr" checked>${tr("add_signature")}</label>
-    `
+$(document).on("click", "#editPost", (e) => {
+    let post = e.currentTarget.closest("table")
+    let content = post.querySelector(".text")
+    let text = content.querySelector(".really_text")
 
-    MessageBox(tr("publishing_suggested_post"), body, [tr("publish"), tr("cancel")], [(async () => {
-        let id = Number(e.currentTarget.dataset.id)
-        let post;
+    if(content.querySelector("textarea") == null) {
+        content.insertAdjacentHTML("afterbegin", `
+            <div class="editMenu">
+                <div id="wall-post-input999"> 
+                    <textarea id="new_content">${text.innerHTML.replace(/(<([^>]+)>)/gi, '')}</textarea>
+                    <input type="button" class="button" value="${tr("save")}" id="endEditing">
+                    <input type="button" class="button" value="${tr("cancel")}" id="cancelEditing">
+                </div>
+                ${e.currentTarget.dataset.nsfw != null ? `
+                    <div class="postOptions">
+                        <label><input type="checkbox" id="nswfw" ${e.currentTarget.dataset.nsfw == 1 ? `checked` : ``}>${tr("contains_nsfw")}</label>
+                    </div>
+                ` : ``}
+                ${e.currentTarget.dataset.fromgroup != null ? `
+                <div class="postOptions">
+                    <label><input type="checkbox" id="fromgroup" ${e.currentTarget.dataset.fromgroup == 1 ? `checked` : ``}>${tr("post_as_group")}</label>
+                </div>
+            ` : ``}
+            </div>
+        `)
 
-        try {
-            e.currentTarget.classList.add("loaded")
-            e.currentTarget.setAttribute("value", "")
-            e.currentTarget.setAttribute("id", "")
-            post = await API.Wall.acceptPost(id, document.getElementById("signatr").checked, document.getElementById("pooblish").value)
-        } catch(ex) {
-            switch(ex.code) {
-                case 11:
-                    MessageBox(tr("error"), tr("error_declining_invalid_post"), [tr("ok")], [Function.noop]);
-                    break;
-                case 19:
-                    MessageBox(tr("error"), tr("error_declining_not_suggested_post"), [tr("ok")], [Function.noop]);
-                    break;
-                case 10:
-                    MessageBox(tr("error"), tr("error_declining_declined_post"), [tr("ok")], [Function.noop]);
-                    break;
-                case 22:
-                    MessageBox(tr("error"), "Access denied", [tr("ok")], [Function.noop]);
-                    break;
-                default:
-                    MessageBox(tr("error"), "Unknown error "+ex.code+": "+ex.message, [tr("ok")], [Function.noop]);
-                    break;
+        u(content.querySelector("#cancelEditing")).on("click", () => {post.querySelector("#editPost").click()})
+        u(content.querySelector("#endEditing")).on("click", () => {
+            let nwcntnt = content.querySelector("#new_content").value
+            let type = "post"
+
+            if(post.classList.contains("comment")) {
+                type = "comment"
             }
 
-            e.currentTarget.setAttribute("value", tr("publish_suggested"))
-            e.currentTarget.classList.remove("loaded")
-            e.currentTarget.setAttribute("id", "publish_post")
-            return 0;
-        }
+            let xhr = new XMLHttpRequest()
+            xhr.open("POST", "/wall/edit")
 
-        NewNotification(tr("suggestion_succefully_published"), tr("suggestion_press_to_go"), null, () => {window.location.assign("/wall" + post.id)});
-        document.getElementById("cound").innerHTML = tr("x_suggested_posts_in_group", post.new_count)
-        e.currentTarget.parentNode.parentNode.parentNode.parentNode.parentNode.outerHTML = ""
-
-        if(document.querySelector("object a[href='"+location.pathname+"'] b") != null) {
-            document.querySelector("object a[href='"+location.pathname+"'] b").innerHTML = post.new_count
-
-            if(post.new_count < 1) {
-                u("object a[href='"+location.pathname+"']").remove()
+            xhr.onloadstart = () => {
+                content.querySelector(".editMenu").classList.add("loading")
             }
-        }
 
-        if(e.currentTarget.parentNode.parentNode.parentNode.parentNode.parentNode.tagName == "TABLE") {
-            e.currentTarget.parentNode.parentNode.parentNode.parentNode.parentNode.outerHTML = ""
-        } else {
-            e.currentTarget.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.outerHTML = ""
-        }
+            xhr.onerror = () => {
+                MessageBox(tr("error"), "unknown error occured", [tr("ok")], [() => {Function.noop}])
+            }
 
-        if(document.querySelectorAll(".post").length < 1 && post.new_count > 0 && document.querySelector(".paginator") != null) {
-            loadMoreSuggestedPosts()
-        }
-    }), Function.noop]);
+            xhr.ontimeout = () => {
+                MessageBox(tr("error"), "Try to refresh page", [tr("ok")], [() => {Function.noop}])
+            }
 
-    document.getElementById("pooblish").innerHTML = e.currentTarget.parentNode.parentNode.parentNode.parentNode.parentNode.querySelector(".really_text").innerHTML.replace(/(<([^>]+)>)/gi, '')
-    document.querySelector(".ovk-diag-body").style.padding = "9px";
-})
+            xhr.onload = () => {
+                let result = JSON.parse(xhr.responseText)
 
-$(document).on("click", "#decline_post", async (e) => {
-    let id = Number(e.currentTarget.dataset.id)
-    let post;
+                if(result.error == "no") {
+                    post.querySelector("#editPost").click()
+                    content.querySelector(".really_text").innerHTML = result.new_content
 
-    try {
-        e.currentTarget.classList.add("loaded")
-        e.currentTarget.setAttribute("value", "")
-        e.currentTarget.setAttribute("id", "")
-        post = await API.Wall.declinePost(id)
-    } catch(ex) {
-        switch(ex.code) {
-            case 11:
-                MessageBox(tr("error"), tr("error_declining_invalid_post"), [tr("ok")], [Function.noop]);
-                break;
-            case 19:
-                MessageBox(tr("error"), tr("error_declining_not_suggested_post"), [tr("ok")], [Function.noop]);
-                break;
-            case 10:
-                MessageBox(tr("error"), tr("error_declining_declined_post"), [tr("ok")], [Function.noop]);
-                break;
-            case 22:
-                MessageBox(tr("error"), "Access denied", [tr("ok")], [Function.noop]);
-                break;
-            default:
-                MessageBox(tr("error"), "Unknown error "+ex.code+": "+ex.message, [tr("ok")], [Function.noop]);
-                break;
-        }
+                    if(post.querySelector(".editedMark") == null) {
+                        post.querySelector(".date").insertAdjacentHTML("beforeend", `
+                            <span class="edited editedMark">(${tr("edited_short")})</span>
+                        `)
+                    }
 
-        e.currentTarget.setAttribute("value", tr("decline_suggested"))
-        e.currentTarget.setAttribute("id", "decline_post")
-        e.currentTarget.classList.remove("loaded")
-        return 0;
-    }
+                    if(e.currentTarget.dataset.nsfw != null) {
+                        e.currentTarget.setAttribute("data-nsfw", result.nsfw)
 
-    // ребята, приключений час
+                        if(result.nsfw == 0) {
+                            post.classList.remove("post-nsfw")
+                        } else {
+                            post.classList.add("post-nsfw")
+                        }
+                    }
 
-    if(e.currentTarget.parentNode.parentNode.parentNode.parentNode.parentNode.tagName == "TABLE") {
-        e.currentTarget.parentNode.parentNode.parentNode.parentNode.parentNode.outerHTML = ""
+                    if(e.currentTarget.dataset.fromgroup != null) {
+                        e.currentTarget.setAttribute("data-fromgroup", result.from_group)
+                    }
+
+                    post.querySelector(".post-avatar").setAttribute("src", result.author.avatar)
+                    post.querySelector(".post-author-name").innerHTML = result.author.name
+                } else {
+                    MessageBox(tr("error"), result.error, [tr("ok")], [Function.noop])
+                    post.querySelector("#editPost").click()
+                }
+            }
+
+            xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+            xhr.send("postid="+e.currentTarget.dataset.id+
+                    "&newContent="+nwcntnt+
+                    "&hash="+encodeURIComponent(u("meta[name=csrf]").attr("value"))+
+                    "&type="+type+
+                    "&nsfw="+(content.querySelector("#nswfw") != null ? content.querySelector("#nswfw").checked : 0)+
+                    "&fromgroup="+(content.querySelector("#fromgroup") != null ? content.querySelector("#fromgroup").checked : 0))
+        })
+
+        u(".editMenu").on("keydown", (e) => {
+            if(e.ctrlKey && e.keyCode === 13)
+                content.querySelector("#endEditing").click()
+        });
+
+        text.style.display = "none"
+        setupWallPostInputHandlers(999)
     } else {
-        e.currentTarget.parentNode.parentNode.parentNode.parentNode.parentNode.parentNode.outerHTML = ""
-    }
-
-    document.getElementById("cound").innerHTML = tr("x_suggested_posts_in_group", post)
-
-    if(document.querySelector("object a[href='"+location.pathname+"'] b") != null) {
-        document.querySelector("object a[href='"+location.pathname+"'] b").innerHTML = post
-
-        if(post < 1) {
-            u("object a[href='"+location.pathname+"']").remove()
-        }
-    }
-
-    if(document.querySelectorAll(".post").length < 1 && post > 0 && document.querySelector(".paginator") != null) {
-        loadMoreSuggestedPosts()
+        u(content.querySelector(".editMenu")).remove()
+        text.style.display = "block"
     }
 })
-
-function loadMoreSuggestedPosts()
-{
-    let xhr = new XMLHttpRequest
-    xhr.open("GET", location.href)
-
-    xhr.onloadstart = () => {
-        document.getElementById("postz").innerHTML = `<img src="/assets/packages/static/openvk/img/loading_mini.gif">`
-    }
-
-    xhr.onload = () => {
-        let parser = new DOMParser()
-        let body   = parser.parseFromString(xhr.responseText, "text/html").getElementById("postz")
-
-        if(body.querySelectorAll(".post").length < 1) {
-            let url = new URL(location.href)
-            url.searchParams.set("p", url.searchParams.get("p") - 1)
-
-            if(url.searchParams.get("p") < 1) {
-                return 0;
-            }
-
-            // ждут давно чужие земли нас
-            history.pushState({}, "", url)
-
-            loadMoreSuggestedPosts()
-        }
-
-        document.getElementById("postz").innerHTML = body.innerHTML
-    }
-
-    xhr.onerror = () => {
-        document.getElementById("postz").innerHTML = tr("error_loading_suggest")
-    }
-
-    xhr.send()
-}
 
 // pornhub window player
 

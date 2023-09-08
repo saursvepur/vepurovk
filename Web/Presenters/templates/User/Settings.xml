@@ -634,6 +634,17 @@
                     <tr>
                         <td width="120" valign="top" align="right">
                             <input
+                                  n:attr="checked => $user->getLeftMenuItemStatus('audios')"
+                                  type="checkbox"
+                                  name="menu_muziko" />
+                        </td>
+                        <td>
+                            <span class="nobold">{_my_audios}</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td width="120" valign="top" align="right">
+                            <input
                                   n:attr="checked => $user->getLeftMenuItemStatus('messages')"
                                   type="checkbox"
                                   name="menu_mesagoj" />
@@ -652,7 +663,8 @@
                         <td>
                             <span class="nobold">{_my_notes}</span>
                         </td>
-                    </tr><tr>
+                    </tr>
+                    <tr>
                         <td width="120" valign="top" align="right">
                             <input
                                   n:attr="checked => $user->getLeftMenuItemStatus('groups')"

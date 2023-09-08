@@ -1,32 +1,90 @@
 let files = new FormData()
 let iter = 0;
 
+function deletePhto(phto)
+{
+    document.querySelector("#photo"+phto).parentNode.removeChild(document.querySelector("#photo"+phto))
+
+    // проверка является ли фотка последним элементом. Если да, применить простой способ
+    if(files.get("blob_"+(phto+1)) == null) {
+        files.delete("blob_"+phto)
+        console.log("Last photo was removed.")
+
+        iter -= 1
+        // но юзер может удалить любую фотографию... ахуеть 
+    } else {
+        let tmpFiles = new FormData();
+
+        for(let it = 0; it < iter; it++) {
+            tmpFiles.append("blob_"+it, files.get("blob_"+it)) 
+            files.delete("blob_"+it)
+        }
+
+        let iterat = 0;
+        let iterenko = 0
+
+        for(let it = 0; it < iter; it++) {
+            if(tmpFiles.get("blob_"+it) != tmpFiles.get("blob_"+phto)) {
+                files.append("blob_"+iterenko, tmpFiles.get("blob_"+iterat))
+
+                if(document.querySelector("#photo"+it) != null) {
+                    document.querySelector("#photo"+it).setAttribute("id", "photo"+iterenko)
+
+                    document.querySelector("#photo"+iterenko+" td a").setAttribute("href", "javascript:deletePhto("+iterenko+")")
+                    document.querySelector("#photo"+iterenko+" td textarea").setAttribute("name", "desc_"+iterenko)
+                }
+                
+                iterenko += 1;
+                iterat += 1;
+            } else {
+                iterat += 1;
+                continue; // openvk.uk
+            }
+        }
+
+        iter -= 1;
+        iterat = 0;
+
+        console.log("Photo was removed.")
+    }
+
+    if(iter == 0) {
+        uploadButton.setAttribute("disabled", "disabled")
+    }
+}
+
 function multifileDescs()
 {
     if(blob.files.length != 0) {
+        if(iter < 20 && blob.files.length < 20) {
+            for(let i = 0; i < blob.files.length; i++) {
+                files.append("blob_"+iter, blob.files[i])
+    
+                filesDescs.insertAdjacentHTML("beforeend", `
+                    <tr id="photo${iter}">
+                        <td width="120" valign="top">
+                            <img width="125" src="${window.URL.createObjectURL(blob.files[i])}">
+                            <br>
+                            <a href="javascript:deletePhto(${iter})" style="float:right">${tr("delete")}</a>
+                        </td>
+                        <td>
+                            <span>${blob.files[i].name.substr(0, 15)}${blob.files[i].name.length > 15 ? "..." : ""}</span>
+                            <br>
+                            <textarea style="margin: 0px; height: 50px; width: 259px; resize: none;" maxlength="255" name="desc_${iter}"></textarea>
+                        </td>
+                    </tr>
+                `)
+    
+                iter += 1
+            }
 
-        for(let i = 0; i < blob.files.length; i++) {
-
-            files.append("blob[]", blob.files[i])
-
-            filesDescs.insertAdjacentHTML("beforeend", `
-                <tr>
-                    <td width="120" valign="top">
-                        <img width="125" src="${window.URL.createObjectURL(blob.files[i])}">
-                    </td>
-                    <td>
-                        <span>${blob.files[i].name}</span>
-                        <br>
-                        <textarea style="margin: 0px; height: 50px; width: 259px; resize: none;" name="desc_${iter}"></textarea>
-                    </td>
-                </tr>
-            `)
-
-            iter+=1
-
+            uploadButton.removeAttribute("disabled")
+        } else {
+            ajaxError(tr("too_many_photos"), "", "fail")
         }
 
-        uploadButton.removeAttribute("disabled")
+    } else {
+        alert("Брух брух нанагыва")
     }
 
 }
@@ -41,6 +99,8 @@ function uploadPictures(album)
     }
 
     for(let i = 0; i < iter; i++) {
+        if(document.querySelector("textarea[name=desc_"+i+"]") == null) continue;
+
         files.append("desc_"+i, document.querySelector("textarea[name=desc_"+i+"]").value)
     }
     
@@ -55,13 +115,11 @@ function uploadPictures(album)
             ajaxError(tr(result.success_msg), tr(result.success_msg + "_desc"), "succ")
 
             for(const el of document.querySelectorAll("td > img")) {
-                console.log(el.src)
                 window.URL.revokeObjectURL(el.src)
             }
-
-            files.delete("blob[]")
             
             for(let i = 0; i < iter; i++) {
+                files.delete("blob_"+i)
                 files.delete("desc_"+i)
             }
 
