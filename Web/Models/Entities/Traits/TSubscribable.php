@@ -28,6 +28,7 @@ trait TSubscribable
             "follower" => $user->getId(),
             "model"    => static::class,
             "target"   => $this->getId(),
+            "flags"    => 0
         ];
         $sub  = $ctx->table("subscriptions")->where($data);
         
@@ -38,5 +39,26 @@ trait TSubscribable
         
         $sub->delete();
         return false;
+    }
+
+    function changeFlags(User $user, int $flags, bool $reverse): bool
+    {
+        $ctx  = DatabaseConnection::i()->getContext();
+        $data = [
+            "follower" => $reverse ? $this->getId() : $user->getId(),
+            "model"    => static::class,
+            "target"   => $reverse ? $user->getId() : $this->getId(),
+        ];
+        $sub  = $ctx->table("subscriptions")->where($data);
+
+        bdump($data);
+
+        if (!$sub) 
+            return false;
+
+        $sub->update([
+            'flags' => $flags
+        ]);
+        return true;
     }
 }

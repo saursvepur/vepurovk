@@ -343,7 +343,10 @@ final class UserPresenter extends OpenVKPresenter
         if ($user->isServiceAccount())
             $this->flashFail("err", tr("error"), tr("forbidden"));
         
-        $user->toggleSubscription($this->user->identity);
+            if ($this->postParam("act") == "rej")
+            $user->changeFlags($this->user->identity, 0b10000000, true);
+        else
+            $user->toggleSubscription($this->user->identity);
 		
 		foreach($user->getUsersLists($this->user->identity) as $list) {
             $list->deleteFriend($user);

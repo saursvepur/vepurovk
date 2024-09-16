@@ -155,6 +155,11 @@ class Club extends RowModel
         return (bool) $this->getRecord()->display_topics_above_wall;
     }
 
+    function isHidingFromGlobalFeedEnforced(): bool
+    {
+        return (bool) $this->getRecord()->enforce_hiding_from_global_feed;
+    }
+
     function isHideFromGlobalFeedEnabled(): bool
     {
         return (bool) $this->getRecord()->hide_from_global_feed;
