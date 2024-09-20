@@ -49,7 +49,7 @@
             </p>
         </div>
 
-        <div n:if="OPENVK_ROOT_CONF['openvk']['preferences']['bellsAndWhistles']['testLabel']" id="test-label">FOR TESTING PURPOSES ONLY</div>
+        <div n:if="OPENVK_ROOT_CONF['openvk']['preferences']['bellsAndWhistles']['testLabel']" id="test-label">FOR TESTING PURPOSES ONLY VEPUROVK</div>
 
         <div class="notifications_global_wrap"></div>
         <div class="dimmer"></div>
@@ -181,9 +181,9 @@
                             <a href="/edit" class="link edit-button">{_edit_button}</a>
                             <a href="{$thisUser->getURL()}" class="link" title="{_my_page} [Alt+Shift+.]" accesskey=".">{_my_page}</a>
                             <a href="/friends{$thisUser->getId()}" class="link">{_my_friends}
-                                <object type="internal/link" n:if="$thisUser->getFollowersCount() > 0">
+                                <object type="internal/link" n:if="$thisUser->getRequestsCount() > 0">
                                     <a href="/friends{$thisUser->getId()}?act=incoming" class="linkunderline">
-                                       (<b>{$thisUser->getFollowersCount()}</b>)
+                                       (<b>{$thisUser->getRequestsCount()}</b>)
                                     </a>
                                 </object>
                             </a>
@@ -200,9 +200,9 @@
 							<a href="/feed/all" class="link edit-button">{_news_all}</a>
                             <a n:if="$thisUser->getLeftMenuItemStatus('news')" href="/feed" class="link" title="{_my_feed} [Alt+Shift+W]" accesskey="w">{_my_feed}</a>
                             <a href="/notifications" class="link" title="{_my_feedback} [Alt+Shift+N]" accesskey="n">{_my_feedback}
-                                {if $thisUser->getNotificationsCount() > 0}
+                                <object type="internal/link" n:if="$thisUser->getNotificationsCount() > 0">
                                     (<b>{$thisUser->getNotificationsCount()}</b>)
-                                {/if}
+                                </object>
                             </a>
 							<a n:if="$thisUser->getLeftMenuItemStatus('apps')" href="/apps?act=installed" class="link">{_my_apps}</a>
                             <a href="/settings" class="link">{_my_settings}</a>
@@ -272,14 +272,21 @@
                             
                             <a n:if="OPENVK_ROOT_CONF['openvk']['preferences']['adPoster']['enable'] && $thisUser->getLeftMenuItemStatus('poster')" href="{php echo OPENVK_ROOT_CONF['openvk']['preferences']['adPoster']['link']}" >
                                 <img src="{php echo OPENVK_ROOT_CONF['openvk']['preferences']['adPoster']['src']}" alt="{php echo OPENVK_ROOT_CONF['openvk']['preferences']['adPoster']['caption']}" class="psa-poster" style="max-width: 100%; margin-top: 10px;" />
-                                    <small>18+</small>
                             </a>
+
+                            <div id="news" n:if="OPENVK_ROOT_CONF['openvk']['preferences']['news']['enable']">
+                                <b>{_news} </b>
+                                    <hr size="1">
+                                    <text>{php echo OPENVK_ROOT_CONF['openvk']['preferences']['news']['title'];}</text>
+                                    <br><br>
+                                    <a href="{php echo OPENVK_ROOT_CONF['openvk']['preferences']['news']['link'];}">Подробнее »</a>
+                            </div>
 
                             <div class="floating_sidebar">
                                 <a class="minilink" href="/friends{$thisUser->getId()}">
-                                    <object type="internal/link" n:if="$thisUser->getFollowersCount() > 0">
+                                    <object type="internal/link" n:if="$thisUser->getRequestsCount() > 0">
                                         <div class="counter">
-                                            +{$thisUser->getFollowersCount()}
+                                            +{$thisUser->getRequestsCount()}
                                         </div>
                                     </object>
                                     <img src="/assets/packages/static/openvk/img/friends.svg">

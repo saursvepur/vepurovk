@@ -1,8 +1,8 @@
 openvk:
     debug: true
     appearance:
-        name: "OpenVK"
-        motd: "Yet another OpenVK instance"
+        name: "VepurOVK"
+        motd: "Инстанс VepurOVK"
     
     preferences:
         femaleGenderPriority: true
@@ -19,6 +19,10 @@ openvk:
                 - "index.php"
         photos:
             upgradeStructure: true
+        news:
+            enable: false
+            link: "/link" 
+            title: "я покакал"
         security:
             requireEmail: false
             requirePhone: false
