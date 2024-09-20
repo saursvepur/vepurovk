@@ -29,6 +29,31 @@ trait TRichText
         
         return $text;
     }
+
+    private function formatKolobki(string $text): string
+{
+    $contentColumn = $this->overrideContentColumn ?? "content";
+    if (iconv_strlen($this->getRecord()->{$contentColumn}) > OPENVK_ROOT_CONF["openvk"]["preferences"]["wall"]["postSizes"]["emojiProcessingLimit"]) {
+        return $text;
+    }
+
+    $kolobki = [
+        ':)' => 'ab', ':(' => 'sad', 'xD' => 'bj', ':D' => 'ag', 'ok' => 'bf',
+        'sos' => 'bc', 'fu' => 'at', 'wall' => 'bu', 'love' => 'ba', 'music' => 'ar',
+        'zlo' => 'aq', 'hi' => 'br', 'yes' => 'bs', 'pivo' => 'az', 'xz' => 'bn',
+        'lol' => 'ap', 'dance' => 'bo',
+    ];
+
+    foreach ($kolobki as $emoji => $file) {
+        $text = preg_replace(
+            '/\b' . preg_quote($emoji, '/') . '\b/',
+            "<img src='/assets/packages/static/openvk/kolobki/{$file}.gif' style='max-height:30px; padding-left:2pt; padding-right:2pt; vertical-align:middle;' />",
+            $text
+        );
+    }
+
+    return $text;
+}
     
     private function formatLinks(string &$text): string
     {
@@ -126,7 +151,7 @@ trait TRichText
                     return "$m[1]<a href='/feed/hashtag/$slug'>$m[2]</a>";
                 }, $text);
                 
-                $text = $this->formatEmojis($text);
+                $text = $this->formatKolobki($text);
             }
             
             $text = $this->removeZalgo($text);
