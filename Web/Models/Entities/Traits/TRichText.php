@@ -31,17 +31,47 @@ trait TRichText
     }
 
     private function formatKolobki(string $text): string
-{
+    {
     $contentColumn = $this->overrideContentColumn ?? "content";
     if (iconv_strlen($this->getRecord()->{$contentColumn}) > OPENVK_ROOT_CONF["openvk"]["preferences"]["wall"]["postSizes"]["emojiProcessingLimit"]) {
         return $text;
     }
 
     $kolobki = [
-        ':)' => 'ab', ':(' => 'sad', 'xD' => 'bj', ':D' => 'ag', 'ok' => 'bf',
-        'sos' => 'bc', 'fu' => 'at', 'wall' => 'bu', 'love' => 'ba', 'music' => 'ar',
-        'zlo' => 'aq', 'hi' => 'br', 'yes' => 'bs', 'pivo' => 'az', 'xz' => 'bn',
-        'lol' => 'ap', 'dance' => 'bo',
+        'acute' => 'acute', 'aggressive' => 'aggressive', 'agree' => 'agree', 'aikido' => 'aikido', 'air_kiss' => 'air_kiss',
+        'alcoholic' => 'alcoholic', 'angel' => 'angel', 'bad' => 'bad', 'banned' => 'banned',
+        'beach' => 'beach', 'beee' => 'beee', 'fu' => 'bad', 'cool' => 'bd', 'big_boss' => 'big_boss', 'black_eye' => 'black_eye',
+        'blind' => 'blind', 'blum2' => 'blum2', 'blum3' => 'blum3', 'blush2' => 'blush2', 'boast' => 'boast',
+        'boredom' => 'boredom', 'brunette' => 'brunette', 'buba' => 'buba', 'buba_phone' => 'buba_phone', 'butcher' => 'butcher',
+        'censored' => 'censored', 'clapping' => 'clapping', 'comando' => 'comando', 'cray' => 'cray', 'cray2' => 'cray2',
+        'kek' => 'crazy', 'crazy_pilot' => 'crazy_pilot', 'curtsey' => 'curtsey', 'dance' => 'dance', 'dance2' => 'dance2', 'wall' => 'dash1',
+        'declare' => 'declare', 'dinamo' => 'dinamo', 'don-t_mention' => 'don-t_mention', 'download' => 'download',
+        'pivo' => 'drinks', 'dwarf' => 'dwarf', 'elf' => 'elf', 'facepalm' => 'facepalm', 
+        'first_move' => 'first_move', 'flirt' => 'flirt', 'focus' => 'focus', 'fool' => 'fool', 'friends' => 'friends',
+        'gamer1' => 'gamer1', 'gamer2' => 'gamer2', 'gamer3' => 'gamer3', 'gamer4' => 'gamer4', 'give_heart' => 'give_heart',
+        'give_rose' => 'give_rose', 'good' => 'good', 'good2' => 'good2', 'good3' => 'good3', 'heat' => 'heat', 'help' => 'help',
+        'hi' => 'hi', 'hunter' => 'hunter', 'hysteric' => 'hysteric', 'i-m_so_happy' => 'i-m_so_happy', 'ireful1' => 'ireful1',
+        'ireful2' => 'ireful2', 'ireful3' => 'ireful3', 'jester' => 'jester', 'king' => 'king', 'king2' => 'king2',
+        'kiss' => 'kiss', 'kiss2' => 'kiss2', 'kiss3' => 'kiss3', 'laugh1' => 'laugh1', 'laugh2' => 'laugh2', 'laugh3' => 'laugh3',
+        'lazy' => 'lazy', 'lazy2' => 'lazy2', 'lazy3' => 'lazy3', 'locomotive' => 'locomotive', 'mail1' => 'mail1', 'mamba' => 'mamba',
+        'man_in_love' => 'man_in_love', 'love' => 'love', 'mda' => 'mda', 'music' => 'music', 'ok' => 'ok', 'orc' => 'orc',
+        'paint' => 'paint', 'patsak' => 'patsak', 'phi' => 'phi', 'pilot' => 'pilot', 'pioneer' => 'pioneer', 'pleasantry' => 'pleasantry',
+        'popcorm1' => 'popcorm1', 'preved' => 'preved', 'protest' => 'protest', 'queen' => 'queen', 'rabbi' => 'rabbi', 'read' => 'read',
+        'resent' => 'resent', 'lol' => 'rofl', 'sad' => 'sad', 'sarcasm' => 'sarcasm', 'sarcastic' => 'sarcastic', 'scare' => 'scare',
+        'sclerosis' => 'sclerosis', 'scout' => 'scout', 'scout_en' => 'scout_en', 'scratch_one-s_head' => 'scratch_one-s_head',
+        'search' => 'search', 'secret' => 'secret', 'shablon_01' => 'shablon_01', 'shablon_02' => 'shablon_02', 'shablon_03' => 'shablon_03',
+        'shablon_04' => 'shablon_04', 'shout' => 'shout', 'slow' => 'slow', 'slow_en' => 'slow_en', 'smile' => 'smile', 'smoke' => 'smoke',
+        'snooks' => 'snooks', 'sorry' => 'sorry', 'sorry2' => 'sorry2', 'spartak' => 'spartak', 'spruce_up' => 'spruce_up', 'stinker' => 'stinker',
+        'stop' => 'stop', 'sun_bespectacled' => 'sun_bespectacled', 'superman' => 'superman', 'superman2' => 'superman2',
+        'superstition' => 'superstition', 'swoon' => 'swoon', 'swoon2' => 'swoon2', 'take_example' => 'take_example',
+        'taunt' => 'taunt', 'tease' => 'tease', 'telephone' => 'telephone', 'tender' => 'tender', 'thank_you' => 'thank_you',
+        'thank_you2' => 'thank_you2', 'this' => 'this', 'tommy' => 'tommy', 'to_babruysk' => 'to_babruysk', 'to_become_senile' => 'to_become_senile',
+        'to_clue' => 'to_clue', 'to_keep_order' => 'to_keep_order', 'to_pick_ones_nose' => 'to_pick_ones_nose', 'to_pick_ones_nose2' => 'to_pick_ones_nose2',
+        'to_pick_ones_nose3' => 'to_pick_ones_nose3', 'to_pick_ones_nose_eat' => 'to_pick_ones_nose_eat', 'to_take_umbrage' => 'to_take_umbrage',
+        'training1' => 'training1', 'triniti' => 'triniti', 'umnik' => 'umnik', 'umnik2' => 'umnik2', 'vampire' => 'vampire', 'victory' => 'victory',
+        'vinsent' => 'vinsent', 'wacko' => 'wacko', 'wacko2' => 'wacko2', 'warning' => 'warning', 'warning2' => 'warning2', 'whistle' => 'whistle',
+        'whistle2' => 'whistle2', 'whistle3' => 'whistle3', 'wild' => 'wild', 'wink3' => 'wink3', 'wizard' => 'wizard', 'yahoo' => 'yahoo',
+        'yes2' => 'yes2', 'yes3' => 'yes3', 'yes4' => 'yes4', 'yu' => 'yu'
     ];
 
     foreach ($kolobki as $emoji => $file) {
@@ -54,7 +84,7 @@ trait TRichText
 
     return $text;
 }
-    
+ 
     private function formatLinks(string &$text): string
     {
         return preg_replace_callback(
@@ -146,9 +176,9 @@ trait TRichText
                 $text = preg_replace("%([\n\r\s]|^)(@([A-Za-z0-9]++))%Xu", "$1[$3|@$3]", $text);
                 $text = preg_replace("%\[([A-Za-z0-9]++)\|((?:[\p{L&}\p{Lo} 0-9@]\p{Mn}?)++)\]%Xu", "<a href='/$1'>$2</a>", $text);
                 $text = preg_replace_callback("%([\n\r\s]|^)(\#([\p{L}_0-9][\p{L}_0-9\(\)\-\']+[\p{L}_0-9\(\)]|[\p{L}_0-9]{1,2}))%Xu", function($m) {
-                    $slug = rawurlencode($m[3]);
+                    $slug = rawurlencode($m[2]);
                     
-                    return "$m[1]<a href='/feed/hashtag/$slug'>$m[2]</a>";
+                    return "$m[1]<a href='/feed/hashtag/$slug'>$m[3]</a>";
                 }, $text);
                 
                 $text = $this->formatKolobki($text);

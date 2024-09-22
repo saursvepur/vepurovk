@@ -119,6 +119,10 @@
                     <a n:if="$geo ?? false" href="javascript:initGeo({$textAreaId})">
                         <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/apps/amarok.png" />
                         Гео-метка
+                    </a>    
+                    <a id="iSmiles">
+                        <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/smiles_icon.png" />
+                        {_smiles}   
                     </a>
                 </div>
             </div>
