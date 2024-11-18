@@ -1,0 +1,155 @@
+{php if(!isset($GLOBALS["textAreaCtr"])) $GLOBALS["textAreaCtr"] = 10;}
+{var $textAreaId = ($post ?? NULL) === NULL ? (++$GLOBALS["textAreaCtr"]) : $post->getId()}
+{var $textAreaId = ($custom_id ?? NULL) === NULL ? $textAreaId : $custom_id}
+
+<div id="write" style="padding: 5px 0;" onfocusin="expand_wall_textarea({$textAreaId});">
+    <form action="{$route}" method="post" enctype="multipart/form-data" style="margin:0;">
+        <textarea id="wall-post-input{$textAreaId}" data-id="{$textAreaId}" placeholder="{_write}" name="text" style="width: 100%;resize: none;" class="small-textarea"></textarea>
+        <div>
+            <!-- padding to fix <br/> bug -->
+        </div>
+        <div id="post-buttons{$textAreaId}" style="display: none;">
+		    <div class="upload">
+
+            </div>
+            <div class="post-upload">
+                <span style="color: inherit;"></span>
+            </div>
+			<div class="post-has-poll">
+                {_poll}
+            </div>
+            <div class="post-has-note">
+
+            </div>
+            <div class="post-has-videos"></div>
+            <div class="post-has-audios"></div>
+            <div class="post-has-geo"></div>
+            
+
+            <div n:if="$postOpts ?? true" class="post-opts">
+                {var $anonEnabled = OPENVK_ROOT_CONF['openvk']['preferences']['wall']['anonymousPosting']['enable']}
+                {if $hasSource}
+                    <label style="user-select:none;">
+                        <input type="checkbox" name="set_source"/> <span style="color: #777777;">{_set_source}</span>
+                    </label>
+
+                    <div id="sourceSet" style="display:none;">
+                        <input type="text" name="source" placeholder="Например: https://saursvepur.xyz/"/>
+                    </div>
+                {/if}
+                
+                {if !is_null($thisUser) && !is_null($club ?? NULL) && $owner < 0}
+                    {if $club->canBeModifiedBy($thisUser)}
+                        <script>
+                            function onWallAsGroupClick(el) {
+                                document.querySelector("#forceSignOpt").style.display = el.checked ? "block" : "none";
+                                
+                                {if $anonEnabled}
+                                    document.querySelector("#octoberAnonOpt").style.display = el.checked ? "none" : "block";
+                                {/if}
+                            }
+                        </script>
+                        
+                        <label>
+                            <input type="checkbox" name="as_group" onchange="onWallAsGroupClick(this)" /> {_post_as_group}
+                        </label>
+                        <label id="forceSignOpt" style="display: none;">
+                            <input type="checkbox" name="force_sign" /> {_add_signature}
+                        </label>
+                    {/if}
+                {/if}
+                
+                <label n:if="$anonEnabled" id="octoberAnonOpt">
+                    <input type="checkbox" name="anon" /> {_as_anonymous}
+                </label>
+                
+                <label>
+                    <input type="checkbox" name="nsfw" /> {_contains_nsfw}
+                </label>
+            </div>
+			
+            <div n:if="!($postOpts ?? true) && !is_null($thisUser) && !is_null($club ?? NULL) && $club->canBeModifiedBy($thisUser)" class="post-opts">
+                <label>
+                    <input type="checkbox" name="as_group" /> {_comment_as_group}
+                </label>
+            </div>
+            <input type="hidden" name="photos" value="" />
+            <input type="hidden" name="videos" value="" />
+            <input type="hidden" name="audios" value="" />
+			<input type="hidden" name="poll" value="none" />
+            <input type="hidden" id="note" name="note" value="none" />
+            <input type="hidden" id="geo" name="geo" value="none" />
+            <input type="hidden" name="type" value="1" />
+            <input type="hidden" name="hash" value="{$csrfToken}" />
+            <br/>
+            <input type="submit" value="{_write}" class="button" />
+            <div style="float: right; display: flex; flex-direction: column;">
+                <a href="javascript:toggleMenu({$textAreaId});">
+                    {_attach}
+                </a>
+                
+                <div id="wallAttachmentMenu" class="hidden">
+                    <a class="header" href="javascript:toggleMenu({$textAreaId});">
+                        {_attach}
+                    </a>
+                    <a id="photosAttachments" {if !is_null($club ?? NULL) && $club->canBeModifiedBy($thisUser)}data-club="{$club->getId()}"{/if}>
+                        <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/application-x-egon.png" />
+                        {_photo}
+                    </a>
+                    <a id="videoAttachment">
+                        <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/application-vnd.rn-realmedia.png" />
+                        {_video}
+                    </a>
+                    <a id="_audioAttachment">
+                        <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/audio-ac3.png" />
+                        {_audio}
+                    </a>
+                    <a n:if="$notes ?? false" href="javascript:attachNote({$textAreaId})">
+                        <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/application-x-srt.png" />
+                        {_note}
+                    </a>
+                    <a n:if="$graffiti ?? false" href="javascript:initGraffiti({$textAreaId});">
+                        <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/actions/draw-brush.png" />
+                        {_graffiti}
+					</a>
+					<a n:if="$polls ?? false" href="javascript:initPoll({$textAreaId})">
+                        <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/actions/office-chart-bar-stacked.png" />
+                        {_poll}	
+                    </a>
+                    <a n:if="$geo ?? false" href="javascript:initGeo({$textAreaId})">
+                        <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/apps/amarok.png" />
+                        Гео-метка
+                    </a>    
+                    <a id="iSmiles">
+                        <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/smiles_icon.png" />
+                        {_smiles}    
+                    </a>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    $(document).ready(() => {
+        setupWallPostInputHandlers({$textAreaId});
+    });
+
+    u("#post-buttons{$textAreaId} input[name='videos']")["nodes"].at(0).value = ""
+    u("#post-buttons{$textAreaId} input[name='photos']")["nodes"].at(0).value = ""
+    u("#post-buttons{$textAreaId} input[name='audios']")["nodes"].at(0).value = ""
+</script>
+
+{if $graffiti}
+    {script "js/node_modules/react/dist/react-with-addons.min.js"}
+    {script "js/node_modules/react-dom/dist/react-dom.min.js"}
+    {script "js/vnd_literallycanvas.js"}
+    {css "js/node_modules/literallycanvas/lib/css/literallycanvas.css"}
+{/if}
+
+{if $geo}
+    {script "js/node_modules/leaflet/dist/leaflet.js"}
+    {css "js/node_modules/leaflet/dist/leaflet.css"}
+    {script "js/node_modules/leaflet-control-geocoder/dist/Control.Geocoder.js"}
+    {css "js/node_modules/leaflet-control-geocoder/dist/Control.Geocoder.css"}
+{/if}

@@ -1,0 +1,34 @@
+<div class="profile_thumb">
+    <a href="{$owner->getURL()}">
+        <img src="{$owner->getAvatarUrl('miniscule')}" style="width: 50px;">
+    </a>
+</div>
+<article class="note_body" id="userContent" style="width: 540px; display: inline-block; margin-bottom: 35px;">
+    <div class="note_header">
+        <div class="note_title">
+            <div class="note_title">
+                <a href="/note{$dat->getPrettyId()}">{$dat->getName()}</a>
+            </div>
+        </div>
+        <div class="byline">
+            <span><a href="{$owner->getURL()}">{$owner->getCanonicalName()}</a></span> {$dat->getPublicationTime()}
+            <span n:if="$dat->getEditTime() > $dat->getPublicationTime()">({_edited} {$dat->getEditTime()})</span>
+        </div>
+    </div>
+    <div style="margin-left: 6px;">
+        {$dat->getText(750)|noescape}
+    </div>
+    <div class="note_footer" style="margin: 10px 0 0;">
+        <div class="comments_count">
+            <a href="/note{$dat->getPrettyId()}">
+
+                {if sizeof($dat->getCommentsCount()) > 0}
+                    {_comments} ({$dat->getCommentsCount()})
+                {else}
+                    {_no_comments}
+                {/if}
+                            
+            </a>
+        </div>
+    </div>
+</article>    

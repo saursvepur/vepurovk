@@ -1,0 +1,30 @@
+{extends "../@layout.xml"}
+
+{block title}{_most_popular_groups}{/block}
+
+{block header}
+    {_most_popular_groups}
+{/block}
+
+{block content}
+		
+{if sizeof($popularClubs) !== 0}
+        {var $entries = array_chunk($popularClubs, 10, true)}
+        <table width="100%" cellspacing="0" cellpadding="0">
+            <tbody>
+                <tr valign="top">
+                    <td n:foreach="$entries as $chunk">
+                        <ol>
+                            <li value="{$num+1}" style="margin-top: 5px;" n:foreach="$chunk as $num => $club">
+                                <a href="{$club->club->getURL()}">{$club->club->getName()}</a>
+                                <div>
+                                    {tr("participants", $club->subscriptions)}
+                                </div>
+                            </li>
+                        </ol>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    {/if}
+{/block}	

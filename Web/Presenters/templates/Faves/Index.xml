@@ -1,0 +1,73 @@
+{extends "../@layout.xml"}
+
+{block title}{_my_faves}{/block}
+
+{block header}
+    {_my_faves}
+{/block}
+
+{block content}
+    <div class="tabs">
+        <div n:attr="id => ($type == 'users' ? 'activetabs' : 'ki')" class="tab">
+            <a n:attr="id => ($type == 'users' ? 'act_tab_a' : 'ki')" href="/fave?type=users">{_fave_users}</a>
+        </div>
+        <div n:attr="id => ($type == 'clubs' ? 'activetabs' : 'ki')" class="tab">
+            <a n:attr="id => ($type == 'clubs' ? 'act_tab_a' : 'ki')" href="/fave?type=clubs">{_fave_clubs}</a>
+        </div>
+        <div n:attr="id => ($type == 'posts' ? 'activetabs' : 'ki')" class="tab">
+            <a n:attr="id => ($type == 'posts' ? 'act_tab_a' : 'ki')" href="/fave?type=posts">{_fave_posts}</a>
+        </div>
+        <div n:attr="id => ($type == 'photos' ? 'activetabs' : 'ki')" class="tab">
+            <a n:attr="id => ($type == 'photos' ? 'act_tab_a' : 'ki')" href="/fave?type=photos">{_fave_photos}</a>
+        </div>
+        <div n:attr="id => ($type == 'videos' ? 'activetabs' : 'ki')" class="tab">
+            <a n:attr="id => ($type == 'videos' ? 'act_tab_a' : 'ki')" href="/fave?type=videos">{_fave_videos}</a>
+        </div>
+        <div n:attr="id => ($type == 'notes' ? 'activetabs' : 'ki')" class="tab">
+            <a n:attr="id => ($type == 'notes' ? 'act_tab_a' : 'ki')" href="/fave?type=notes">{_fave_notes}</a>
+        </div>
+    </div>
+    
+    <div class="favesContainer {if $count > 0}{if $type == 'photos'}album-flex{elseif $type == 'users' || $type == 'clubs'}content_list album-flex long longer{/if}{/if}" style="margin-top: 8px;">
+        {if $count < 1}
+            {include "../components/error.xml", description => tr("no_faves")}
+        {else}
+            {foreach $iterator as $iter}
+                {var $target = $iter->getTarget()}
+                {if $type == "users" || $type == "clubs"}
+                    <div class="cl_element">
+                        <div class="cl_avatar">
+                            <a href="{$target->getURL()}">
+                                <img class="ava" src="{$target->getAvatarUrl('miniscule')}" />
+                            </a>
+                        </div>
+                        <a href="{$target->getURL()}" class="cl_name">
+                            <text class="cl_fname">{$target->getCanonicalName()}</text>
+                        </a>    
+                    </div>
+                {elseif $type == "posts"}
+                    {include "../components/post.xml", post => $iter->getTarget()}
+                {elseif $type == "photos"}
+                    <div class="album-photo">
+                        
+                        <a href="/photo{$iter->getTarget()->getPrettyId()}">
+                            <img class="album-photo--image" src="{$iter->getTarget()->getURL()}" alt="{$iter->getTarget()->getDescription()}" />
+                        </a>
+                    </div>
+                {elseif $type == "videos"}
+                    {include "../components/video.xml", video => $iter->getTarget()}
+                {elseif $type == "notes"}
+                    {include "../components/listNote.xml", dat => $iter->getTarget(), owner => $iter->getTarget()->getOwner()}
+                {/if}
+            {/foreach}
+
+            {include "../components/paginator.xml", conf => (object) [
+                "page"     => $page,
+                "count"    => $count,
+                "amount"   => sizeof($iterator),
+                "perPage"  => 10,
+                "atBottom" => true,
+            ]}
+        {/if}
+    </div>
+{/block}

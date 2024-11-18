@@ -1,0 +1,69 @@
+{if $attachment instanceof \openvk\Web\Models\Entities\Photo}
+    {if !$attachment->isDeleted()}
+        {var $link = "/photo" . ($attachment->isAnonymous() ? ("s/" . base_convert((string) $attachment->getId(), 10, 32)) : $attachment->getPrettyId())}
+        <a href="{$link}" onclick="OpenMiniature(event, {$attachment->getURLBySizeId('large')}, {$parent->getPrettyId()}, {$attachment->getPrettyId()}, {$parentType})">
+            <img class="media" src="{$attachment->getURLBySizeId('normal')}" alt="{$attachment->getDescription()}" loading=lazy />
+        </a>
+    {else}
+        <a href="javascript:alert('{_attach_no_longer_available}');">
+            <img class="media" src="/assets/packages/static/openvk/img/banned.jpg" alt="{_attach_no_longer_available}" />
+        </a>
+    {/if}
+{elseif $attachment instanceof \openvk\Web\Models\Entities\Video}
+    {if $attachment->getType() === 0}
+        <div class="bsdn media" data-name="{$attachment->getName()}" data-author="{$attachment->getOwner()->getCanonicalName()}">
+            <video class="media" src="{$attachment->getURL()}"></video>
+        </div>
+    {else}
+        {var $driver = $attachment->getVideoDriver()}
+        {if !$driver}
+            <span style="color:red;">{_version_incompatibility}</span>
+        {else}
+            {$driver->getEmbed("100%")|noescape}
+        {/if}
+    {/if}
+	
+    <div class="video-wowzer">
+        <img src="/assets/packages/static/openvk/img/videoico.png" />
+        <a href="/video{$attachment->getPrettyId()}" id="videoOpen" data-id="{$attachment->getId()}">{$attachment->getName()}</a>
+    </div>
+
+{elseif $attachment instanceof \openvk\Web\Models\Entities\Poll}
+    {presenter "openvk!Poll->view", $attachment->getId()}
+{elseif $attachment instanceof \openvk\Web\Models\Entities\Note}
+    {if !$attachment->isDeleted()}
+        <div class="attachment_note">
+            <img class="attachment_note_icon" src="/assets/packages/static/openvk/img/note.svg">
+            <span class="attachment_note_text">{_note}</span>
+            <span class="attachment_note_name"><a href="javascript:void(showArticle({$attachment->getId()}));">{ovk_proc_strtr($attachment->getName(), 66)}</a></span>
+        </div>
+    {else}
+        <div class="attachment_note">
+            <img class="attachment_note_icon" src="/assets/packages/static/openvk/img/note.svg">
+            <span class="attachment_note_text">{_note}</span>
+            <span class="attachment_note_name">{_deleted}</span>
+        </div>
+    {/if}    	
+{elseif $attachment instanceof \openvk\Web\Models\Entities\Post}
+    {if $attachment->canBeViewedBy($thisUser ?? NULL)}
+        {php $GLOBALS["_nesAttGloCou"] = (isset($GLOBALS["_nesAttGloCou"]) ? $GLOBALS["_nesAttGloCou"] : 0) + 1}
+        {if $GLOBALS["_nesAttGloCou"] > 2}
+            <a href="/wall{$attachment->getPrettyId()}">{_open_post}</a>
+        {else}
+            {include "post.xml", post => $attachment, compact => true}
+        {/if}
+    {else} 
+        <div class="no_access_attachment">
+            <span>{_no_access_attachment}</span>
+        </div>
+    {/if}
+{elseif $attachment instanceof \openvk\Web\Models\Entities\Audio}
+    <div style="width:100%;">
+        {include "../Audio/player.xml", audio => $attachment}
+    </div>    
+{else}
+    <span style="color:red;">{_version_incompatibility}</span>
+{/if}
+
+{php $GLOBALS["_nesAttGloCou"] = NULL}
+

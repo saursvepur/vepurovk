@@ -1,0 +1,52 @@
+{extends "../@layout.xml"}
+
+{block title}{_"photo"}{/block}
+
+{block header}
+    {ifset $album}
+        <a href="{$album->getOwner()->getURL()}">
+            {$album->getOwner()->getCanonicalName()}
+        </a>
+        {if ($album->getOwner() instanceof openvk\Web\Models\Entities\Club)}
+            » <a href="/albums{$album->getOwner()->getId() * -1}">{_"albums"}</a>
+        {else}
+            » <a href="/albums{$album->getOwner()->getId()}">{_"albums"}</a>
+        {/if}
+        » <a href="/album{$album->getPrettyId()}">{$album->getName()}</a>
+    {else}
+        <a href="{$photo->getOwner()->getURL()}">{$photo->getOwner()->getCanonicalName()}</a>
+    {/ifset}
+    » {_"photo"}
+{/block}
+
+{block content}
+    <center style="margin-bottom: 8pt;">
+        <img src="{$photo->getURLBySizeId('large')}" style="max-width: 80%; max-height: 60vh;" />
+    </center>
+    
+    <hr/>
+    
+    <div style="width: 100%; min-height: 100px;" class="ovk-photo-details">
+        <div style="float: left; min-height: 100px; width: 68%;margin-left: 3px;">
+            {include "../components/comments.xml", comments => $comments, count => $cCount, page => $cPage, model => "photos", parent => $photo, fromPost => true, custom_id => 999}
+        </div>
+        <div style="float:right;min-height: 100px;width: 30%;margin-left: 1px;">
+            <div>
+                <h4>{_"information"}</h4>
+                <span style="color: grey;">{_"info_description"}:</span>
+                {$photo->getDescription() ?? "(отсутствует)"}<br/>
+                <span style="color: grey;">{_"info_uploaded_by"}:</span>
+                <a href="{$photo->getOwner()->getURL()}">{$photo->getOwner()->getFullName()}</a><br/>
+                <span style="color: grey;">{_"info_upload_date"}:</span>
+                {$photo->getPublicationTime()}
+            </div>
+            <br/>
+            <h4>{_actions}</h4>
+            <div n:if="isset($thisUser) && $thisUser->getId() === $photo->getOwner()->getId()">
+                <a href="/photo{$photo->getPrettyId()}/edit" class="profile_link" style="display:block;width:96%;">{_"edit"}</a>
+                <a id="_photoDelete" href="/photo{$photo->getPrettyId()}/delete" class="profile_link" style="display:block;width:96%;">{_"delete"}</a>
+            </div>
+            <a href="{$photo->getURL()}" class="profile_link" target="_blank" style="display:block;width:96%;">{_"open_original"}</a>
+        </div>
+    </div>
+{/block}

@@ -1,0 +1,104 @@
+{extends "@layout.xml"}
+
+{block wrap}
+<div class="wrap2">
+    <div class="wrap1">
+        <div class="page_wrap padding_top">
+            <div n:ifset="tabs" n:ifcontent class="tabs stupid-fix" {if !is_null($what) && $what != "" && $thisUser->getSearchAppear() == 1}style="height:60px;"{/if}>
+                {include tabs}
+				{if $thisUser->getSearchAppear() == 0 && $what != ""}
+                    {include "components/paginator.xml", conf => (object) [
+                        "page"     => $page,
+                        "count"    => $count,
+                        "amount"   => sizeof($data),
+                        "perPage"  => $perPage ?? OPENVK_DEFAULT_PER_PAGE,
+                        "atBottom" => false,
+                    ]}
+                {/if}
+                <style>
+                .paginator
+                    {
+                        position:absolute;
+                        margin-left:526px;
+                        margin-top:-6px;
+                    }
+                </style>
+            </div>
+
+            {ifset size}
+                {include size, x => $dat}
+            {/ifset}
+
+            {ifset specpage}
+                {include specpage, x => $dat}
+            {else}
+                {if $what == "users" || $what == "groups" || $what == "comments" || $what == "posts"}
+            {include searchOptions}
+            {/if}
+                <div class="container_gray infContainer" {if $what != "" && $what != "photos"}style="width:60%;"{/if}>
+                    {var $data = is_array($iterator) ? $iterator : iterator_to_array($iterator)}
+
+                    {if sizeof($data) > 0}
+                        {if $what == "users" || $what == "" || $what == "groups"}
+                        <div class="{if $what != ''}contentEx{else}content{/if} infObj" n:foreach="$data as $dat">
+                            <table>
+                                <tbody>
+                                    <tr>
+                                        <td valign="top">
+                                            <a href="{include link, x => $dat}">
+                                                {include preview, x => $dat}
+                                            </a>
+                                        </td>
+                                        <td valign="top" style="width: 100%">
+                                            {ifset infotable}
+                                                {include infotable, x => $dat}
+                                            {else}
+                                            <a href="{include link, x => $dat}">
+                                                <b>
+                                                    {include name, x => $dat}
+                                                </b>
+                                            </a>
+                                            <br/>
+                                                {include description, x => $dat}
+                                            {/ifset}
+                                        </td>
+                                        <td n:ifset="actions" valign="top" class="action_links" style="min-width: 150px;">
+                                            {include actions, x => $dat}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                            {elseif $what == "posts"}
+                        <div n:foreach="$data as $dat">
+                            {include "components/post.xml", post => $dat}
+                        </div>
+                        {elseif $what == "comments"}
+                        <div n:foreach="$data as $dat">
+                            {include "components/comment.xml", comment => $dat}
+                        </div>      
+                        {/if}
+                        {include "components/paginator.xml", conf => (object) [
+                            "page"     => $page,
+                            "count"    => $count,
+                            "amount"   => sizeof($data),
+                            "perPage"  => $perPage ?? OPENVK_DEFAULT_PER_PAGE,
+                            "atBottom" => true,
+                        ]}
+                    {else}
+                        {ifset customErrorMessage}
+                            {include customErrorMessage}
+                        {else}
+                            {include "components/nothing.xml"}
+                        {/ifset}
+                    {/if}
+                </div>
+            {/ifset}
+            	
+            {ifset bottom}
+                {include bottom}
+            {/ifset}
+        </div>
+    </div>
+</div>
+{/block}

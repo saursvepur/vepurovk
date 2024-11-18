@@ -1,0 +1,28 @@
+{extends "../@layout.xml"}
+{block title}{_"welcome"}{/block}
+
+{block header}
+    {_"welcome"}
+{/block}
+
+{block content}
+    {presenter "openvk!Support->knowledgeBaseArticle", "about"}
+	<p>Нас уже <b>{$stats->all}</b> пользователей</p>
+		 <br>
+		 <p>С помощью этого сайта Вы можете:</p>
+<ul>
+<p>
+<li><span>Найти людей, с которыми Вы когда-либо учились, работали или отдыхали.</span></li>
+<li><span>Узнать больше о людях, которые Вас окружают, и найти новых друзей.</span></li>
+<li><span>Продвигать своё творчество и/или мнение.</span></li>
+<li><span>Всегда оставаться в контакте с теми, кто Вам дорог.</span></li>
+</ul></p>
+
+    <a href="/tour"><div class="tour" onmouseover="this.style.backgroundColor='#FCFBF5'" onmouseout="this.style.backgroundColor='#F9F6E7'" style="background-color: rgb(249, 246, 231);"><b>{_tour_title}</b><div>{_tour_promo}</div></div></a><br>
+    <center>
+	<p>
+        <a class="button" style="margin-right: 5px;cursor: pointer;" href="/login">{_"log_in"}</a>
+        <a class="button" style="cursor: pointer;" href="/reg">{_"registration"}</a>
+	</p>
+    </center>
+{/block}

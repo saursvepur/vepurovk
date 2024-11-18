@@ -1,0 +1,7 @@
+{var $isNewPaginator = isset($thisUser) && (bool)$thisUser->getPaginatorType()}
+
+{if $isNewPaginator}
+    {include "paginators/new.xml", conf => $conf}
+{else}
+    {include "paginators/old.xml", conf => $conf}
+{/if}

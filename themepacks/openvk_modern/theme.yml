@@ -1,0 +1,11 @@
+id: openvk_modern
+version: "0.0.1.0"
+openvk_version: 0
+enabled: 1
+metadata:
+    name:
+        _: "VepurOVK Modern"
+        en: "VepurOVK Modern"
+        ru: "VepurOVK Modern"
+    author: "Mikita Wiśniewski (rudzik8)"
+    description: "VepurOVK theme in modern style"
