@@ -1,8 +1,8 @@
 {extends "../@layout.xml"}
-{block title}{_"select_language"}{/block}
+{block title}{_select_language}{/block}
 
 {block header}
-    {_"select_language"}
+    {_select_language}
 {/block}
 
 {block content}
@@ -15,7 +15,7 @@
 
         .navigation-lang .link_new {
             display: inline-block;
-            padding: 25px 25px 20px 25px;
+            padding: 20px 10px 5px 10px;
             text-decoration: none;
             border-top: 1px solid #fff;
             color: #000;

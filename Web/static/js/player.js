@@ -16,6 +16,8 @@ function _bsdnToHumanTime(time) {
 }
 
 function _bsdnTpl(name, author) {
+    name   = escapeHtml(name);
+    author = escapeHtml(author);
 
     return `
             <div class="bsdn_contextMenu" style="display: none;">
@@ -374,7 +376,7 @@ function bsdnInitElement(el) {
 
     video = el.querySelector(".bsdn_video > video");
     _bsdnApplyBindings(el, video);
-    video.volume = 0.85;
+    video.volume = 0.75;
 }
 
 function bsdnHydrate() {

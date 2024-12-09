@@ -22,8 +22,8 @@ class APIToken extends RowModel
     {
         return $this->getId() . "-" . chunk_split($this->getSecret(), 8, "-") . "jill";
     }
-	
-	function getPlatform(): ?string
+
+    function getPlatform(): ?string
     {
         return $this->getRecord()->platform;
     }

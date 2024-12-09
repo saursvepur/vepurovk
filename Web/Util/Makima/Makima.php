@@ -18,7 +18,7 @@ class Makima
         $this->photos = $photos;
     }
 
-    private function getOrientation(Photo $photo, &$ratio): int
+    private function getOrientation($photo, &$ratio): int
     {
         [$width, $height] = $photo->getDimensions();
         $ratio = $width / $height;
@@ -70,7 +70,7 @@ class Makima
                     $result->colSizes = [1];
                     $result->rowSizes = [1, 1];
                     $result->width    = ceil($maxWidth);
-                    $result->height   = $computedHeight;
+                    $result->height   = $computedHeight * 2;
                     $result->tiles    = [new ThumbTile(1, 1, $maxWidth, $computedHeight), new ThumbTile(1, 1, $maxWidth, $computedHeight)];
                 } else if(
                     $orients == [Makima::ORIENT_WIDE, Makima::ORIENT_WIDE]
@@ -162,7 +162,7 @@ class Makima
                     $result->tiles    = [
                         new ThumbTile(1, 3, $wCover, $maxHeight), new ThumbTile(1, 1, $w, $h0),
                                                                   new ThumbTile(1, 1, $w, $h1),
-                                                                  new ThumbTile(1, 1, $w, $h1),
+                                                                  new ThumbTile(1, 1, $w, $h2),
                     ];
                 }
             break;

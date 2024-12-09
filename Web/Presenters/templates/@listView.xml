@@ -4,45 +4,32 @@
 <div class="wrap2">
     <div class="wrap1">
         <div class="page_wrap padding_top">
-            <div n:ifset="tabs" n:ifcontent class="tabs stupid-fix" {if !is_null($what) && $what != "" && $thisUser->getSearchAppear() == 1}style="height:60px;"{/if}>
+            <div n:ifset="tabs" n:ifcontent class="tabs stupid-fix">
                 {include tabs}
-				{if $thisUser->getSearchAppear() == 0 && $what != ""}
-                    {include "components/paginator.xml", conf => (object) [
-                        "page"     => $page,
-                        "count"    => $count,
-                        "amount"   => sizeof($data),
-                        "perPage"  => $perPage ?? OPENVK_DEFAULT_PER_PAGE,
-                        "atBottom" => false,
-                    ]}
-                {/if}
-                <style>
-                .paginator
-                    {
-                        position:absolute;
-                        margin-left:526px;
-                        margin-top:-6px;
-                    }
-                </style>
             </div>
 
             {ifset size}
                 {include size, x => $dat}
             {/ifset}
 
+            {ifset before_content}
+                {include before_content, x => $dat}
+            {/ifset}
+
             {ifset specpage}
                 {include specpage, x => $dat}
             {else}
-                {if $what == "users" || $what == "groups" || $what == "comments" || $what == "posts"}
-            {include searchOptions}
-            {/if}
-                <div class="container_gray infContainer" {if $what != "" && $what != "photos"}style="width:60%;"{/if}>
+                <div class="container_gray {ifset noscroll}no_scroll_container{else}scroll_container{/ifset}">
                     {var $data = is_array($iterator) ? $iterator : iterator_to_array($iterator)}
 
+                    {ifset top}
+                        {include top, x => $dat}
+                    {/ifset}
+
                     {if sizeof($data) > 0}
-                        {if $what == "users" || $what == "" || $what == "groups"}
-                        <div class="{if $what != ''}contentEx{else}content{/if} infObj" n:foreach="$data as $dat">
+                        <div class="scroll_node content" n:foreach="$data as $dat">
                             <table>
-                                <tbody>
+                                <tbody n:attr="id => is_null($table_body_id) ? NULL : $table_body_id">
                                     <tr>
                                         <td valign="top">
                                             <a href="{include link, x => $dat}">
@@ -69,22 +56,13 @@
                                 </tbody>
                             </table>
                         </div>
-                            {elseif $what == "posts"}
-                        <div n:foreach="$data as $dat">
-                            {include "components/post.xml", post => $dat}
-                        </div>
-                        {elseif $what == "comments"}
-                        <div n:foreach="$data as $dat">
-                            {include "components/comment.xml", comment => $dat}
-                        </div>      
-                        {/if}
-                        {include "components/paginator.xml", conf => (object) [
-                            "page"     => $page,
-                            "count"    => $count,
-                            "amount"   => sizeof($data),
-                            "perPage"  => $perPage ?? OPENVK_DEFAULT_PER_PAGE,
-                            "atBottom" => true,
-                        ]}
+                            {include "components/paginator.xml", conf => (object) [
+                                "page"     => $page,
+                                "count"    => $count,
+                                "amount"   => sizeof($data),
+                                "perPage"  => $perPage ?? OPENVK_DEFAULT_PER_PAGE,
+                                "atBottom" => true,
+                            ]}
                     {else}
                         {ifset customErrorMessage}
                             {include customErrorMessage}
@@ -94,7 +72,7 @@
                     {/if}
                 </div>
             {/ifset}
-            	
+
             {ifset bottom}
                 {include bottom}
             {/ifset}

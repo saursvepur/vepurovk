@@ -190,13 +190,13 @@
 
                 <script>
                     function viewBackupCodes() {
-                        MessageBox("Просмотр резервных кодов", `
+                        MessageBox(tr("viewing_backup_codes"), `
                             <form id="back-codes-view-form" method="post" action="/settings/2fa">
                                 <label for="password">Пароль</label>
                                 <input type="password" id="password" name="password" required />
                                 <input type="hidden" name="hash" value={$csrfToken} />
                             </form>
-                            `, ["Просмотреть", "Отменить"], [
+                            `, [tr("viewing"), tr("cancel")], [
                             () => {
                                 document.querySelector("#back-codes-view-form").submit();
                             }, Function.noop
@@ -204,13 +204,13 @@
                     }
 
                     function disableTwoFactorAuth() {
-                        MessageBox("Отключить 2FA", `
+                        MessageBox(tr("disable_2fa"), `
                             <form id="two-factor-auth-disable-form" method="post" action="/settings/2fa/disable">
                                 <label for="password">Пароль</label>
                                 <input type="password" id="password" name="password" required />
                                 <input type="hidden" name="hash" value={$csrfToken} />
                             </form>
-                            `, ["Отключить", "Отменить"], [
+                            `, [tr("disable"), tr("cancel")], [
                             () => {
                                 document.querySelector("#two-factor-auth-disable-form").submit();
                             }, Function.noop
@@ -266,8 +266,6 @@
                         <select name="page.read" style="width: 164px;">
                             <option value="3" {if $user->getPrivacySetting('page.read') == 3}selected{/if}>{_privacy_value_anybody_dative}</option>
                             <option value="2" {if $user->getPrivacySetting('page.read') == 2}selected{/if}>{_privacy_value_users}</option>
-                            <option value="1" {if $user->getPrivacySetting('page.read') == 1}selected{/if}>{_privacy_value_friends_dative}</option>
-                            <option value="0" {if $user->getPrivacySetting('page.read') == 0}selected{/if}>{_privacy_value_only_me_dative}</option>
                         </select>
                     </td>
                 </tr>
@@ -279,8 +277,8 @@
                         <select name="page.info.read" style="width: 164px;">
                             <option value="3" {if $user->getPrivacySetting('page.info.read') == 3}selected{/if}>{_privacy_value_anybody_dative}</option>
                             <option value="2" {if $user->getPrivacySetting('page.info.read') == 2}selected{/if}>{_privacy_value_users}</option>
-                            <option value="1" {if $user->getPrivacySetting('page.read') == 1}selected{/if}>{_privacy_value_friends_dative}</option>
-                            <option value="0" {if $user->getPrivacySetting('page.read') == 0}selected{/if}>{_privacy_value_only_me_dative}</option>
+                            <option value="1" {if $user->getPrivacySetting('page.info.read') == 1}selected{/if}>{_privacy_value_friends_dative}</option>
+                            <option value="0" {if $user->getPrivacySetting('page.info.read') == 0}selected{/if}>{_privacy_value_only_me_dative}</option>
                         </select>
                     </td>
                 </tr>
@@ -320,6 +318,19 @@
                             <option value="2" {if $user->getPrivacySetting('videos.read') == 2}selected{/if}>{_privacy_value_users}</option>
                             <option value="1" {if $user->getPrivacySetting('videos.read') == 1}selected{/if}>{_privacy_value_friends_dative}</option>
                             <option value="0" {if $user->getPrivacySetting('videos.read') == 0}selected{/if}>{_privacy_value_only_me_dative}</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td width="120" valign="top">
+                        <span class="nobold">{_privacy_setting_view_audio}</span>
+                    </td>
+                    <td>
+                        <select name="audios.read" style="width: 164px;">
+                            <option value="3" {if $user->getPrivacySetting('audios.read') == 3}selected{/if}>{_privacy_value_anybody_dative}</option>
+                            <option value="2" {if $user->getPrivacySetting('audios.read') == 2}selected{/if}>{_privacy_value_users}</option>
+                            <option value="1" {if $user->getPrivacySetting('audios.read') == 1}selected{/if}>{_privacy_value_friends_dative}</option>
+                            <option value="0" {if $user->getPrivacySetting('audios.read') == 0}selected{/if}>{_privacy_value_only_me_dative}</option>
                         </select>
                     </td>
                 </tr>
@@ -381,19 +392,6 @@
                             <option value="2" {if $user->getPrivacySetting('messages.write') == 2}selected{/if}>{_privacy_value_anybody}</option>
                             <option value="1" {if $user->getPrivacySetting('messages.write') == 1}selected{/if}>{_privacy_value_friends}</option>
                             <option value="0" {if $user->getPrivacySetting('messages.write') == 0}selected{/if}>{_privacy_value_nobody}</option>
-                        </select>
-                    </td>
-                </tr>
-                <tr>
-                    <td width="120" valign="top">
-                        <span class="nobold">{_privacy_setting_view_audio}</span>
-                    </td>
-                    <td>
-                        <select name="audios.read" style="width: 164px;">
-                            <option value="3" {if $user->getPrivacySetting('audios.read') == 3}selected{/if}>{_privacy_value_anybody_dative}</option>
-                            <option value="2" {if $user->getPrivacySetting('audios.read') == 2}selected{/if}>{_privacy_value_users}</option>
-                            <option value="1" {if $user->getPrivacySetting('audios.read') == 1}selected{/if}>{_privacy_value_friends_dative}</option>
-                            <option value="0" {if $user->getPrivacySetting('audios.read') == 0}selected{/if}>{_privacy_value_only_me_dative}</option>
                         </select>
                     </td>
                 </tr>
@@ -483,30 +481,6 @@
             <input type="hidden" name="hash" value="{$csrfToken}" />
             <input type="submit" value="{_redeem}" class="button" />
         </form>
-        <script>
-            u(".vouncher_input").on("paste", function(event) {
-                const vouncher = event.clipboardData.getData("text");
-
-                let segments;
-                if(vouncher.length === 27) {
-                    segments = vouncher.split("-");
-                    if(segments.length !== 4)
-                        segments = undefined;
-                } else if(vouncher.length === 24) {
-                    segments = chunkSubstr(vouncher, 6);
-                }
-
-                if(segments !== undefined) {
-                    document.vouncher_form.key0.value = segments[0];
-                    document.vouncher_form.key1.value = segments[1];
-                    document.vouncher_form.key2.value = segments[2];
-                    document.vouncher_form.key3.value = segments[3];
-                    document.vouncher_form.key3.focus();
-                }
-
-                event.preventDefault();
-            });
-        </script>
         
         {elseif $isInterface}
         
@@ -583,17 +557,6 @@
                             <select name="main_page">
                                 <option value="0" {if !$user->getMainPage()}selected{/if}>{_my_page}</option>
                                 <option value="1" {if $user->getMainPage()}selected{/if}>{_my_feed}</option>
-                            </select>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td width="120" valign="top">
-                            <span class="nobold">{_ui_settings_paginator}</span>
-                        </td>
-                        <td>
-                            <select name="paginator">
-                                <option value="0" {if $user->getPaginatorType() == 0}selected{/if}>{_ui_settings_paginator_old}</option>
-                                <option value="1" {if $user->getPaginatorType() == 1}selected{/if}>{_ui_settings_paginator_new}</option>
                             </select>
                         </td>
                     </tr>
@@ -676,8 +639,7 @@
                         <td>
                             <span class="nobold">{_my_notes}</span>
                         </td>
-                    </tr>
-                    <tr>
+                    </tr><tr>
                         <td width="120" valign="top" align="right">
                             <input
                                   n:attr="checked => $user->getLeftMenuItemStatus('groups')"
@@ -706,7 +668,7 @@
                         </td>
                         <td>
                             <span class="nobold">{_my_apps}</span>
-                        </td>    
+                        </td>
                     </tr><tr n:if="sizeof(OPENVK_ROOT_CONF['openvk']['preferences']['menu']['links']) > 0">
                         <td width="120" valign="top" align="right" align="right">
                             <input

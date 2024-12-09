@@ -34,7 +34,8 @@ abstract class Postable extends Attachable
         $oid = (int) $this->getRecord()->owner;
         if(!$real && $this->isAnonymous())
             $oid = (int) OPENVK_ROOT_CONF["openvk"]["preferences"]["wall"]["anonymousPosting"]["account"];
-        
+
+        $oid = abs($oid);
         if($oid > 0)
             return (new Users)->get($oid);
         else
@@ -84,7 +85,7 @@ abstract class Postable extends Attachable
         return sizeof(DB::i()->getContext()->table("likes")->where([
             "model"  => static::class,
             "target" => $this->getRecord()->id,
-        ]));
+        ])->group("origin"));
     }
     
     function getLikers(int $page = 1, ?int $perPage = NULL): \Traversable
@@ -129,8 +130,6 @@ abstract class Postable extends Attachable
             "model"  => static::class,
             "target" => $this->getRecord()->id,
         ];
-
-        # vepurovk.xyz/
 
         if($liked) {
             if(!$this->hasLikeFrom($user)) {
@@ -178,7 +177,7 @@ abstract class Postable extends Attachable
             $this->stateChanges("edited", time());
         }*/
         
-        parent::save();
+        parent::save($log);
     }
     
     use Traits\TAttachmentHost;

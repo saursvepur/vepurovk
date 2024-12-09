@@ -1,13 +1,16 @@
 {extends "../@layout.xml"}
 
-{block title}{_playlist}{/block}
+{block title}
+    {_playlist}
+    {$playlist->getName()}
+{/block}
 
 {block headIncludes}
     <meta property="og:type" content="music.album">
     <meta property="og:title" content="{$playlist->getName()}">
     <meta property="og:url" content="{$playlist->getURL()}">
     <meta property="og:description" content="{$playlist->getDescription()}">
-    <meta property="og:image" content="{$playlist->getCoverURL()}">
+    <meta property="og:image" content="{$cover_url}">
     
     <script type="application/ld+json">
         {
@@ -22,33 +25,44 @@
 {block header}
     <a href="{$owner->getURL()}">{$owner->getCanonicalName()}</a>
     »
-    <a href="/audios{$ownerId}">{_audios}</a>
+    <a href="/playlists{$ownerId}">{_playlists}</a>
     »
     {_playlist}
 {/block}
 
 {block content}
     {include "bigplayer.xml"}
-
-    {php $count = $playlist->size()}
+    <script>
+        window.__current_page_audio_context = {
+            name: 'playlist_context',
+            entity_id: {$playlist->getId()},
+            page: {$page}
+        }
+    </script>
     
-    <input type="hidden" name="bigplayer_context" data-type="playlist_context" data-entity="{$playlist->getId()}" data-page="{$page}">
     <div class="playlistBlock">
-        <div class="playlistCover" style="float: left;">
-            <a href="{$playlist->getCoverURL()}" target="_blank">
-                <img src="{$playlist->getCoverURL('normal')}" alt="{_playlist_cover}">
+        <div class="playlistCover">
+            {if $cover}
+            <a href="{$cover_url}" target="_blank">
+                    <img onclick="OpenMiniature(event, {$cover_url}, null, {$cover->getPrettyId()}, null)" src="{$cover_url}" alt="{_playlist_cover}">
             </a>
+            {else}
+            <a>
+                <img src="{$cover_url}" alt="{_playlist_cover}">
+            </a>
+            {/if}
 
-            <div class="profile_links" style="width: 139px;" n:if="isset($thisUser)">
-                <a class="profile_link" style="width: 98%;" href="/playlist{$playlist->getPrettyId()}/edit" n:if="$playlist->canBeModifiedBy($thisUser)">{_edit_playlist}</a>
-                <a class="profile_link" style="width: 98%;" id="bookmarkPlaylist" data-id="{$playlist->getId()}" n:if="!$isBookmarked">{_bookmark}</a>
-                <a class="profile_link" style="width: 98%;" id="unbookmarkPlaylist" data-id="{$playlist->getId()}" n:if="$isBookmarked">{_unbookmark}</a>
+            <div class="profile_links" n:if="isset($thisUser)">
+                <a class="profile_link" href="/player/upload?playlist={$playlist->getId()}" n:if="$canEdit">{_upload_audio}</a>
+                <a class="profile_link" href="/playlist{$playlist->getPrettyId()}/edit" n:if="$canEdit">{_edit_playlist}</a>
+                <a class="profile_link" id="bookmarkPlaylist" data-id="{$playlist->getId()}" n:if="!$isBookmarked">{_bookmark}</a>
+                <a class="profile_link" id="unbookmarkPlaylist" data-id="{$playlist->getId()}" n:if="$isBookmarked">{_unbookmark}</a>
             </div>
         </div>
 
-        <div style="float: left;padding-left: 13px;width:75%">
+        <div class='playlistWrapper'>
             <div class="playlistInfo">
-                <h4 style="border-bottom:unset;">{$playlist->getName()}</h4>
+                <h4>{$playlist->getName()}</h4>
 
                 <div class="moreInfo">
                     {$playlist->getMetaDescription()|noescape}
@@ -56,14 +70,14 @@
                     <div style="margin-top: 11px;">
                         <span>{nl2br($playlist->getDescriptionHTML())|noescape}</span>
                     </div>
-                    <hr style="color: #f7f7f7;">
+                    <hr>
                 </div>
             </div>
-            <div class="audiosContainer infContainer" style="margin-top: 14px;">
+            <div class="audiosContainer scroll_container infContainer" style="margin-top: 14px;">
                 {if $count < 1}
                     {_empty_playlist}
                 {else}  
-                    <div class="infObj" n:foreach="$audios as $audio">
+                    <div class="scroll_node" n:foreach="$audios as $audio">
                         {include "player.xml", audio => $audio}
                     </div>
 

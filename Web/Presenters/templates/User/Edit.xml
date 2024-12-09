@@ -3,10 +3,10 @@
     {var $backdrops = $user->getBackDropPictureURLs()}
 {/if}
 
-{block title}{_"edit_page"}{/block}
+{block title}{_edit_page}{/block}
 
 {block header}
-    {_"edit_page"}
+    {_edit_page}
 {/block}
 
 {block content}
@@ -15,41 +15,40 @@
     {var $isInterests = $mode === 'interests'}
     {var $isAvatar    = $mode === 'avatar'}
     {var $isBackDrop  = $mode === 'backdrop'}
-	
+
     <div n:if="$user->hasPendingNumberChange()" class="msg">
         <b>Подтверждение номера телефона</b><br/>
         Введите код для подтверждения смены номера: <a href="/edit/verify_phone">ввести код</a>.
     </div>
-    
+
     <div class="tabs">
         <div n:attr="id => ($isMain ? 'activetabs' : 'ki')" class="tab">
-            <a n:attr="id => ($isMain ? 'act_tab_a' : 'ki')" href="/edit">{_"main"}</a>
+            <a n:attr="id => ($isMain ? 'act_tab_a' : 'ki')" href="/edit">{_main}</a>
         </div>
         <div n:attr="id => ($isContacts ? 'activetabs' : 'ki')" class="tab">
-            <a n:attr="id => ($isContacts ? 'act_tab_a' : 'ki')" href="/edit?act=contacts">{_"contacts"}</a>
+            <a n:attr="id => ($isContacts ? 'act_tab_a' : 'ki')" href="/edit?act=contacts">{_contacts}</a>
         </div>
         <div n:attr="id => ($isInterests ? 'activetabs' : 'ki')" class="tab">
-            <a n:attr="id => ($isInterests ? 'act_tab_a' : 'ki')" href="/edit?act=interests">{_"interests"}</a>
+            <a n:attr="id => ($isInterests ? 'act_tab_a' : 'ki')" href="/edit?act=interests">{_interests}</a>
         </div>
         <div n:attr="id => ($isAvatar ? 'activetabs' : 'ki')" class="tab">
-            <a n:attr="id => ($isAvatar ? 'act_tab_a' : 'ki')" href="/edit?act=avatar">{_"avatar"}</a>
+            <a n:attr="id => ($isAvatar ? 'act_tab_a' : 'ki')" href="/edit?act=avatar">{_avatar}</a>
         </div>
         <div n:attr="id => ($isBackDrop ? 'activetabs' : 'ki')" class="tab">
             <a n:attr="id => ($isBackDrop ? 'act_tab_a' : 'ki')" href="/edit?act=backdrop">{_backdrop_short}</a>
         </div>
-	</div>	
-		
-    
+    </div>
+
     <div class="container_gray">
         {if $isMain}
-        
-        <h4>{_"main_information"}</h4>
+
+        <h4>{_main_information}</h4>
         <form action="/edit?act=main" method="POST" enctype="multipart/form-data">
             <table cellspacing="7" cellpadding="0" width="60%" border="0" align="center">
                 <tbody>
                     <tr>
                         <td width="120" valign="top">
-                            <span class="nobold">{_"name"}: </span>
+                            <span class="nobold">{_name}: </span>
                         </td>
                         <td>
                             <input type="text" name="first_name" value="{$user->getFirstName(true)}" />
@@ -57,24 +56,24 @@
                     </tr>
                     <tr>
                         <td width="120" valign="top">
-                            <span class="nobold">{_"surname"}: </span>
+                            <span class="nobold">{_surname}: </span>
                         </td>
                         <td>
-                            <input type="text" name="last_name" value="{$user->getLastName(true)}" required />
+                            <input type="text" name="last_name" value="{$user->getLastName(true)}" />
                         </td>
                     </tr>
                     <tr>
                         <td width="120" valign="top">
-                            <span class="nobold">{_"nickname"}: </span>
+                            <span class="nobold">{_nickname}: </span>
                         </td>
                         <td>
                             <input type="text" name="pseudo" value="{$user->getPseudo()}" />
                         </td>
                     </tr>
-                    {if OPENVK_ROOT_CONF['openvk']['credentials']['zadarma']['enable']}
+                    {if OPENVK_ROOT_CONF['openvk']['credentials']['smsc']['enable']}
                     <tr>
                         <td width="120" valign="top">
-                            <span class="nobold">{_"phone"}: </span>
+                            <span class="nobold">{_phone}: </span>
                         </td>
                         <td>
                             <input type="phone" name="phone" value="{$user->getPhone()}" />
@@ -83,7 +82,7 @@
                     {/if}
                     <tr>
                         <td width="120" valign="top">
-                            <span class="nobold">{_"status"}: </span>
+                            <span class="nobold">{_status}: </span>
                         </td>
                         <td>
                             <input type="text" name="status" value="{$user->getStatus()}" />
@@ -91,7 +90,7 @@
                     </tr>
                     <tr>
                         <td width="120" valign="top">
-                            <span class="nobold">{_"hometown"}: </span>
+                            <span class="nobold">{_hometown}: </span>
                         </td>
                         <td>
                             <input type="text" name="hometown" value="{$user->getHometown()}" />
@@ -99,15 +98,15 @@
                     </tr>
                     <tr>
                         <td width="120" valign="top">
-                            <span class="nobold">{_"relationship"}: </span>
+                            <span class="nobold">{_relationship}: </span>
                         </td>
                         <td>
                             <select name="marialstatus" onChange="toggleMaritalStatus(this)">
-                                <option n:foreach="range(0, 8) as $i" n:attr="selected: ($user->getMaritalStatus() == $i)" value="{$i}">
+                                <option n:foreach="range(0, 8) as $i" n:attr="selected => ($user->getMaritalStatus() == $i)" value="{$i}">
                                     {if $user->isFemale()}
                                         {var $str = "relationship_$i"}
                                         {if tr($str . "_fem") == ("@$str" . "_fem")}
-                                            {_"$str"}
+                                            {_$str}
                                         {else}
                                             {tr($str . "_fem")}
                                         {/if}
@@ -128,7 +127,7 @@
                     </tr>
                     <tr>
                         <td width="120" valign="top">
-                            <span class="nobold">{_"politViews"}: </span>
+                            <span class="nobold">{_politViews}: </span>
                         </td>
                         <td>
                             <select name="politViews">
@@ -140,21 +139,21 @@
                     </tr>
                     <tr>
                         <td width="120" valign="top">
-                            <span class="nobold">{_"gender"}: </span>
+                            <span class="nobold">{_gender}: </span>
                         </td>
                         <td>
                             <select name="gender">
-                                <option value="1" {if $user->isFemale() == true}selected{/if}>{_"female"}</option>
-                                <option value="0" {if $user->isFemale() == false}selected{/if}>{_"male"}</option>
+                                <option value="1" {if $user->isFemale() == true}selected{/if}>{_female}</option>
+                                <option value="0" {if $user->isFemale() == false}selected{/if}>{_male}</option>
                             </select>
                         </td>
                     </tr>
                     <tr>
                         <td width="120" valign="top">
-                             <span class="nobold">{_"birth_date"}: </span>
+                             <span class="nobold">{_birth_date}: </span>
                         </td>
                         <td>
-                         <input max={date('Y-m-d')} name="birthday" value={is_null($user->getBirthday()) ? NULL : $user->getBirthday()->format('%Y-%m-%d')} type="date" style="margin-bottom: 7px;" />
+                            <input max={date('Y-m-d')} name="birthday" value={is_null($user->getBirthday()) ? NULL : $user->getBirthday()->format('%Y-%m-%d')} type="date" style="margin-bottom: 7px;" />
                             <select name="birthday_privacy">
                                 <option value="0" {if $user->getBirthdayPrivacy() == 0}selected{/if}>{_show_my_birthday}</option>
                                 <option value="1" {if $user->getBirthdayPrivacy() == 1}selected{/if}>{_show_only_month_and_day}</option>
@@ -170,51 +169,42 @@
                     </tr>
                     <tr>
                         <td>
-                            
+
                         </td>
                         <td>
                             <input type="hidden" name="hash" value="{$csrfToken}" />
-                            <input type="submit" value="{_'save'}" class="button" />
+                            <input type="submit" value="{_save}" class="button" />
                         </td>
                     </tr>
                 </tbody>
             </table>
-            <script>
-                function toggleMaritalStatus(e) {
-                    let elem = $("#maritalstatus-user");
-                    $("#maritalstatus-user-select").empty();
-                    if ([0, 1, 8].includes(Number(e.value))) {
-                        elem.hide();
-                    } else {
-                        elem.show();
-                    }
-                }
-            </script>
         </form>
-        
+
         {elseif $isContacts}
-            
-        <h4>{_"contact_information"}</h4>
+
+        <h4>{_contact_information}</h4>
         <form action="/edit?act=contacts" method="POST" enctype="multipart/form-data">
             <table cellspacing="7" cellpadding="0" width="60%" border="0" align="center">
                 <tbody>
                     <tr>
                         <td width="120" valign="top">
-                            <span class="nobold">{_"email"}: </span>
+                            <span class="nobold">{_email}: </span>
                         </td>
                         <td>
                             <input type="email" name="email_contact" value="{$user->getContactEmail()}" />
                         </td>
                     </tr>
-					<td width="120" valign="top">
-                            <span class="nobold">{_"kicq"}: </span>
+                    <tr>
+                        <td width="120" valign="top">
+                            <span class="nobold">{_kicq}: </span>
                         </td>
                         <td>
                             <input type="text" name="kicq" value="{$user->getKICQ()}" />
-                        </td>				
+                        </td>
+                    </tr>
                     <tr>
                         <td width="120" valign="top">
-                            <span class="nobold">{_"telegram"}: </span>
+                            <span class="nobold">{_telegram}: </span>
                         </td>
                         <td>
                             <input type="text" name="telegram" value="{$user->getTelegram()}" />
@@ -222,7 +212,7 @@
                     </tr>
                     <tr>
                         <td width="120" valign="top">
-                            <span class="nobold">{_"personal_website"}: </span>
+                            <span class="nobold">{_personal_website}: </span>
                         </td>
                         <td>
                             <input type="text" name="website" value="{$user->getWebsite()}" />
@@ -230,7 +220,7 @@
                     </tr>
                     <tr>
                         <td width="120" valign="top">
-                            <span class="nobold">{_"city"}: </span>
+                            <span class="nobold">{_city}: </span>
                         </td>
                         <td>
                             <input type="text" name="city" value="{$user->getCity()}" />
@@ -238,7 +228,7 @@
                     </tr>
                     <tr>
                         <td width="120" valign="top">
-                            <span class="nobold">{_"address"}: </span>
+                            <span class="nobold">{_address}: </span>
                         </td>
                         <td>
                                 <input type="text" name="address" value="{$user->getPhysicalAddress()}" />
@@ -246,26 +236,26 @@
                     </tr>
                     <tr>
                         <td>
-                            
+
                         </td>
                         <td>
                             <input type="hidden" name="hash" value="{$csrfToken}" />
-                            <input type="submit" value="{_'save'}" class="button" />
+                            <input type="submit" value="{_save}" class="button" />
                         </td>
                     </tr>
                 </tbody>
             </table>
         </form>
-        
+
         {elseif $isInterests}
-        
-        <h4>{_"personal_information"}</h4>
+
+        <h4>{_personal_information}</h4>
         <form action="/edit?act=interests" method="POST" enctype="multipart/form-data">
             <table cellspacing="7" cellpadding="0" width="60%" border="0" align="center">
                 <tbody>
                     <tr>
                         <td width="120" valign="top">
-                            <span class="nobold">{_"interests"}: </span>
+                            <span class="nobold">{_interests}: </span>
                         </td>
                         <td>
                             <textarea type="text" name="interests">{$user->getInterests()}</textarea>
@@ -273,7 +263,7 @@
                     </tr>
                     <tr>
                         <td width="120" valign="top">
-                            <span class="nobold">{_"favorite_music"}: </span>
+                            <span class="nobold">{_favorite_music}: </span>
                         </td>
                         <td>
                             <textarea type="text" name="fav_music">{$user->getFavoriteMusic()}</textarea>
@@ -281,13 +271,13 @@
                     </tr>
                     <tr>
                         <td width="120" valign="top">
-                            <span class="nobold">{_"favorite_films"}: </span>
+                            <span class="nobold">{_favorite_films}: </span>
                         </td>
                         <td>
                             <textarea type="text" name="fav_films">{$user->getFavoriteFilms()}</textarea>
                         </td>
-					</tr>
-						<td width="120" valign="top">
+                    </tr>
+                    <td width="120" valign="top">
                             <span class="nobold">{_"favorite_games"}: </span>
                         </td>
                         <td>
@@ -296,7 +286,7 @@
                     </tr>
                     <tr>
                         <td width="120" valign="top">
-                            <span class="nobold">{_"favorite_shows"}: </span>
+                            <span class="nobold">{_favorite_shows}: </span>
                         </td>
                         <td>
                             <textarea type="text" name="fav_shows">{$user->getFavoriteShows()}</textarea>
@@ -304,7 +294,7 @@
                     </tr>
                     <tr>
                         <td width="120" valign="top">
-                            <span class="nobold">{_"favorite_books"}: </span>
+                            <span class="nobold">{_favorite_books}: </span>
                         </td>
                         <td>
                             <textarea type="text" name="fav_books">{$user->getFavoriteBooks()}</textarea>
@@ -312,7 +302,7 @@
                     </tr>
                     <tr>
                         <td width="120" valign="top">
-                            <span class="nobold">{_"favorite_quotes"}: </span>
+                            <span class="nobold">{_favorite_quotes}: </span>
                         </td>
                         <td>
                             <textarea type="text" name="fav_quote">{$user->getFavoriteQuote()}</textarea>
@@ -320,7 +310,7 @@
                     </tr>
                     <tr>
                         <td width="120" valign="top">
-                            <span class="nobold">{_"information_about"}: </span>
+                            <span class="nobold">{_information_about}: </span>
                         </td>
                         <td>
                             <textarea type="text" name="about">{$user->getDescription()}</textarea>
@@ -328,26 +318,26 @@
                     </tr>
                     <tr>
                         <td>
-                            
+
                         </td>
                         <td>
                             <input type="hidden" name="hash" value="{$csrfToken}" />
-                            <input type="submit" value="{_'save'}" class="button" />
+                            <input type="submit" value="{_save}" class="button" />
                         </td>
                     </tr>
                 </tbody>
             </table>
         </form>
-        
+
         {elseif $isAvatar}
-        
-        <h4>{_"profile_picture"}</h4>
+
+        <h4>{_profile_picture}</h4>
         <form action="/al_avatars" method="POST" enctype="multipart/form-data">
             <table cellspacing="7" cellpadding="0" width="60%" border="0" align="center">
                 <tbody>
                     <tr>
                         <td width="120" valign="top">
-                            <span class="nobold">{_"picture"}: </span>
+                            <span class="nobold">{_picture}: </span>
                         </td>
                         <td>
                             <label class="button" style="">{_browse}
@@ -358,18 +348,18 @@
                     </tr>
                     <tr>
                         <td>
-                            
+
                         </td>
                         <td>
                             <input type="hidden" name="hash" value="{$csrfToken}" />
-                            <input type="submit" value="{_'save'}" class="button" />
+                            <input type="submit" value="{_save}" class="button" />
                         </td>
                     </tr>
                 </tbody>
             </table>
         </form>
-		
-		{elseif $isBackDrop}
+
+        {elseif $isBackDrop}
 
         <h4>{_backdrop}</h4>
         <p>{_backdrop_desc}</p>
@@ -399,8 +389,8 @@
                 </center>
             </div>
         </form>
-        
+
         {/if}
     </div>
-    
+
 {/block}

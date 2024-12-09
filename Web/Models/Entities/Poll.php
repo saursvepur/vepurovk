@@ -278,6 +278,17 @@ class Poll extends Attachable
         
         return $poll;
     }
+
+    function canBeViewedBy(?User $user = NULL): bool
+    {
+        # waiting for #935 :(
+        /*if(!is_null($this->getAttachedPost())) {
+            return $this->getAttachedPost()->canBeViewedBy($user);
+        } else {*/
+            return true;
+        #}
+
+    }
     
     function save(?bool $log = false): void
     {
@@ -293,15 +304,6 @@ class Poll extends Attachable
         }
     }
 
-    function canBeViewedBy(?User $user = NULL): bool
-    {
-        if(!is_null($this->getAttachedPost())) {
-            return $this->getAttachedPost()->canBeViewedBy($user);
-        } else {
-            return true;
-        }
-    }
-
     function getAttachedPost()
     {
         $post = DatabaseConnection::i()->getContext()->table("attachments")
@@ -311,7 +313,7 @@ class Poll extends Attachable
 
         if(!is_null($post->target_id))
             return (new Posts)->get($post->target_id);
-        else 
+        else
             return NULL;
     }
 }

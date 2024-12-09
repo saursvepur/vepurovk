@@ -10,8 +10,8 @@ use Parsedown;
 final class SupportPresenter extends OpenVKPresenter
 {
     protected $banTolerant = true;
-	protected $deactivationTolerant = true;
-	protected $presenterName = "support";
+    protected $deactivationTolerant = true;
+    protected $presenterName = "support";
     
     private $tickets;
     private $comments;
@@ -99,8 +99,7 @@ final class SupportPresenter extends OpenVKPresenter
                     Telegram::send($helpdeskChat, $telegramText);
                 }
 
-                header("HTTP/1.1 302 Found");
-                header("Location: /support/view/" . $ticket->getId());
+                $this->redirect("/support/view/" . $ticket->getId());
             } else {
                 $this->flashFail("err", tr("error"), tr("you_have_not_entered_name_or_text"));
             }
@@ -159,10 +158,10 @@ final class SupportPresenter extends OpenVKPresenter
                 if($ticket->getUserId() !== $this->user->id && $this->hasPermission('openvk\Web\Models\Entities\TicketReply', 'write', 0))
                     $_redirect = "/support/tickets";
                 else
-                    $_redirect = "/support";
+                    $_redirect = "/support?act=list";
 
                 $ticket->delete();
-				$this->redirect($_redirect);
+                $this->redirect($_redirect);
             }
         }
     }
@@ -192,8 +191,7 @@ final class SupportPresenter extends OpenVKPresenter
                 $comment->setCreated(time());
                 $comment->save();
                 
-                header("HTTP/1.1 302 Found");
-                header("Location: /support/view/" . $id);
+                $this->redirect("/support/view/" . $id);
             } else {
                 $this->flashFail("err", tr("error"), tr("you_have_not_entered_text"));
             }
@@ -324,6 +322,10 @@ final class SupportPresenter extends OpenVKPresenter
         
         $user->setBlock_In_Support_Reason($this->queryParam("reason"));
         $user->save();
+
+        if($this->queryParam("close_tickets"))
+            DatabaseConnection::i()->getConnection()->query("UPDATE tickets SET type = 2 WHERE user_id = ".$id);
+
         $this->returnJson([ "success" => true, "reason" => $this->queryParam("reason") ]);
     }
 
@@ -340,8 +342,8 @@ final class SupportPresenter extends OpenVKPresenter
         $user->save();
         $this->returnJson([ "success" => true ]);
     }
-	
-	function renderAgent(int $id): void
+
+    function renderAgent(int $id): void
     {
         $this->assertPermission("openvk\Web\Models\Entities\TicketReply", "write", 0);
 
@@ -350,13 +352,13 @@ final class SupportPresenter extends OpenVKPresenter
         if(!$support_names->isExists($id))
             $this->template->mode = "edit";
 
-        $this->template->agent_id = $id;
-        $this->template->mode = in_array($this->queryParam("act"), ["info", "edit"]) ? $this->queryParam("act") : "info";
-        $this->template->agent = $support_names->get($id) ?? NULL;
-        $this->template->counters = [
-          "all" => (new TicketComments)->getCountByAgent($id),
-          "good" => (new TicketComments)->getCountByAgent($id, 1),
-          "bad" => (new TicketComments)->getCountByAgent($id, 2)
+        $this->template->agent_id    = $id;
+        $this->template->mode        = in_array($this->queryParam("act"), ["info", "edit"]) ? $this->queryParam("act") : "info";
+        $this->template->agent       = $support_names->get($id) ?? NULL;
+        $this->template->counters    = [
+          "all"    => (new TicketComments)->getCountByAgent($id),
+          "good"   => (new TicketComments)->getCountByAgent($id, 1),
+          "bad"    => (new TicketComments)->getCountByAgent($id, 2)
         ];
 
         if($id != $this->user->identity->getId())
@@ -364,8 +366,6 @@ final class SupportPresenter extends OpenVKPresenter
                 $this->template->mode = "info";
             else
                 $this->redirect("/support/agent" . $this->user->identity->getId());
-
-        #exit(var_dump($this->template->agent->getAvatarURL()));
     }
 
     function renderEditAgent(int $id): void

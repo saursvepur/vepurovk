@@ -6,7 +6,7 @@
         <style>
             {var $css = file_get_contents(OPENVK_ROOT . "/Web/static/js/node_modules/@atlassian/aui/dist/aui/aui-prototyping.css")}
             {str_replace("fonts/", "/assets/packages/static/openvk/js/node_modules/@atlassian/aui/dist/aui/fonts/", $css)|noescape}
-			{file_get_contents(OPENVK_ROOT . "/Web/static/js/node_modules/@atlassian/aui/dist/aui/aui-prototyping-darkmode.css")|noescape}
+            {file_get_contents(OPENVK_ROOT . "/Web/static/js/node_modules/@atlassian/aui/dist/aui/aui-prototyping-darkmode.css")|noescape}
         </style>
         <title>{include title} - {_admin} {$instance_name}</title>
     </head>
@@ -17,7 +17,7 @@
                     <div class="aui-header-inner">
                         <div class="aui-header-primary">
                             <h1 id="logo" class="aui-header-logo aui-header-logo-textonly">
-                                <a href="/admin">
+                                <a href="/">
                                     <span class="aui-header-logo-device">{$instance_name}</span>
                                 </a>
                             </h1>
@@ -39,7 +39,7 @@
                                         if (currentTheme == null) {
                                             const preferDarkScheme = window.matchMedia("(prefers-color-scheme: dark)");
                                             let theme = "light";
-
+                                            
                                             if (preferDarkScheme.matches) {
                                                 theme = "dark";
                                                 document.body.classList.add("aui-theme-dark");
@@ -94,11 +94,19 @@
                                         <li>
                                             <a href="/admin/clubs">{_groups}</a>
                                         </li>
-										<li>
+                                        <li>
                                             <a href="/admin/bannedLinks">{_admin_banned_links}</a>
                                         </li>
                                         <li>
-                                            <a href="/admin/music">Музыка</a>
+                                            <a href="/admin/music">{_admin_music}</a>
+                                        </li>
+                                    </ul>
+                                    <div class="aui-nav-heading">
+                                        <strong>Chandler</strong>
+                                    </div>
+                                    <ul class="aui-nav">
+                                        <li>
+                                            <a href="/admin/chandler/groups">{_c_groups}</a>
                                         </li>
                                     </ul>
                                     <div class="aui-nav-heading">
@@ -113,14 +121,34 @@
                                         </li>
                                     </ul>
                                     <div class="aui-nav-heading">
+                                        <strong>{_admin_settings}</strong>
+                                    </div>
+                                    <ul class="aui-nav">
+                                        <li>
+                                            <a href="/admin/settings/tuning">{_admin_settings_tuning}</a>
+                                        </li>
+                                        <li>
+                                            <a href="/admin/logs">Логи</a>
+                                        </li>
+                                        <li>
+                                            <a href="/admin/settings/appearance">{_admin_settings_appearance}</a>
+                                        </li>
+                                        <li>
+                                            <a href="/admin/settings/security">{_admin_settings_security}</a>
+                                        </li>
+                                        <li>
+                                            <a href="/admin/settings/integrations">{_admin_settings_integrations}</a>
+                                        </li>
+                                        <li>
+                                            <a href="/admin/settings/system">{_admin_settings_system}</a>
+                                        </li>
+                                    </ul>
+                                    <div class="aui-nav-heading">
                                         <strong>{_admin_about}</strong>
                                     </div>
                                     <ul class="aui-nav">
                                         <li>
                                             <a href="/about:openvk">{_admin_about_version}</a>
-                                        </li>
-                                        <li>
-                                            <a href="/admin/translation">{_translations}</a>
                                         </li>
                                         <li>
                                             <a href="/about">{_admin_about_instance}</a>

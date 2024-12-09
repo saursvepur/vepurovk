@@ -12,7 +12,7 @@
                 {_main}
             </a>
         </div>
-		<div class="tab">
+        <div class="tab">
             <a href="/club{$club->getId()}/backdrop">
                 {_backdrop_short}
             </a>
@@ -31,7 +31,7 @@
                 <tbody>
                     <tr>
                         <td width="120" valign="top">
-                            <span class="nobold">{_"name"}: </span>
+                            <span class="nobold">{_name}: </span>
                         </td>
                         <td>
                             <input type="text" name="name" value="{$club->getName()}" />
@@ -39,7 +39,7 @@
                     </tr>
                     <tr>
                         <td width="120" valign="top">
-                            <span class="nobold">{_"description"}: </span>
+                            <span class="nobold">{_description}: </span>
                         </td>
                         <td>
                             <textarea type="text" name="about" style="resize:vertical;">{$club->getDescription()}</textarea>
@@ -77,12 +77,12 @@
                             <span class="nobold">{_wall}: </span>
                         </td>
                         <td>
-                            <input type="checkbox" name="wall" value="1" n:attr="checked => $club->canPost()" /> {_group_allow_post_for_everyone}<br>
                             <select name="wall">
                                 <option value="1" n:attr="selected => $club->getWallType() == 1" /> {_group_allow_post_for_everyone}</option>
                                 <option value="2" n:attr="selected => $club->getWallType() == 2" /> {_group_limited_post}</option>
                                 <option value="0" n:attr="selected => $club->getWallType() == 0" /> {_group_closed_post}</option>
                             <select>
+
                             <input type="checkbox" name="hide_from_global_feed" value="1" n:attr="checked => $club->isHideFromGlobalFeedEnabled(), disabled => $club->isHidingFromGlobalFeedEnforced()" /> {_group_hide_from_global_feed}
                         </td>
                     </tr>
@@ -107,21 +107,12 @@
                         </td>
                     </tr>
 
-                     <tr>
+                    <tr>
                         <td width="120" valign="top">
                             <span class="nobold">{_audios}: </span>
                         </td>
                         <td>
                             <label><input type="checkbox" name="upload_audios" value="1" n:attr="checked => $club->isEveryoneCanUploadAudios()" /> {_everyone_can_upload_audios}</label>
-                        </td>
-                    </tr>
-
-                    <tr n:if="$club->getOwner()->getId() == $thisUser->getId()">
-                        <td width="120" valign="top">
-
-                        </td>
-                        <td>
-                            <span><a href="javascript:showGroupDeleteDialog({$club->getId()})">{_delete_group}</a></span>
                         </td>
                     </tr>
 
@@ -131,7 +122,7 @@
                         </td>
                         <td>
                             <input type="hidden" name="hash" value="{$csrfToken}" />
-                            <input type="submit" value="{_'save'}" class="button" />
+                            <input type="submit" value="{_save}" class="button" />
                         </td>
                     </tr>
                 </tbody>

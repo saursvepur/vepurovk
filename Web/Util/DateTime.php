@@ -22,7 +22,8 @@ class DateTime
         $now  = date_create();
         $diff = date_diff($now, $then);
         if($diff->invert === 0)
-            return ovk_strftime_safe("%e %B %Y ", $this->timestamp) . tr("time_at_sp") . ovk_strftime_safe(" %R %p", $this->timestamp);
+            return ovk_strftime_safe("%e %B %Y ", $this->timestamp) . tr("time_at_sp") . ovk_strftime_safe(" %R", $this->timestamp);
+        
         if($this->timestamp >= strtotime("midnight")) { # Today
             if($diff->h >= 1)
                 return tr("time_today") . tr("time_at_sp") . ovk_strftime_safe(" %R", $this->timestamp);

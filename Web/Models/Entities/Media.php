@@ -120,17 +120,6 @@ abstract class Media extends Postable
         
         $this->stateChanges("hash", $hash);
     }
-	
-	function setMultiFile(array $file, int $i = 0): void
-    {
-        if($file["error"][$i] !== UPLOAD_ERR_OK)
-            throw new ISE("File uploaded is corrupted");
-
-        $hash = hash_file("whirlpool", $file["tmp_name"][$i]);
-        $this->saveFile($file["tmp_name"][$i], $hash);
-
-        $this->stateChanges("hash", $hash);
-    }
 
     function save(?bool $log = false): void
     {
@@ -139,7 +128,7 @@ abstract class Media extends Postable
             $this->stateChanges("last_checked", time());
         }
 
-        parent::save();
+        parent::save($log);
     }
 
     function delete(bool $softly = true): void

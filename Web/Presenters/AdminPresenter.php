@@ -3,18 +3,30 @@ namespace openvk\Web\Presenters;
 use Chandler\Database\Log;
 use Chandler\Database\Logs;
 use openvk\Web\Models\Entities\{Voucher, Gift, GiftCategory, User, BannedLink};
-use openvk\Web\Models\Repositories\{Bans, ChandlerGroups, ChandlerUsers, Audios, Photos, Posts, Users, Clubs, Videos, Vouchers, Gifts, BannedLinks};
+use openvk\Web\Models\Repositories\{Audios,
+    ChandlerGroups,
+    ChandlerUsers,
+    Users,
+    Clubs,
+    Util\EntityStream,
+    Vouchers,
+    Gifts,
+    BannedLinks,
+    Bans,
+    Photos, 
+    Posts, 
+    Videos};
 use Chandler\Database\DatabaseConnection;
 
 final class AdminPresenter extends OpenVKPresenter
 {
     private $users;
     private $clubs;
-    private $audios;
     private $vouchers;
     private $gifts;
     private $bannedLinks;
     private $chandlerGroups;
+    private $audios;
     private $logs;
 
     function __construct(Users $users, Clubs $clubs, Vouchers $vouchers, Gifts $gifts, BannedLinks $bannedLinks, ChandlerGroups $chandlerGroups, Audios $audios)
@@ -25,10 +37,9 @@ final class AdminPresenter extends OpenVKPresenter
         $this->gifts    = $gifts;
         $this->bannedLinks = $bannedLinks;
         $this->chandlerGroups = $chandlerGroups;
+        $this->audios = $audios;
         $this->logs = DatabaseConnection::i()->getContext()->table("ChandlerLogs");
 
-        $this->audios = $audios;
-        
         parent::__construct();
     }
     
@@ -36,6 +47,13 @@ final class AdminPresenter extends OpenVKPresenter
     {
         if(!OPENVK_ROOT_CONF["openvk"]["preferences"]["commerce"])
             $this->flash("warn", tr("admin_commerce_disabled"), tr("admin_commerce_disabled_desc"));
+    }
+
+    private function warnIfLongpoolBroken(): void
+    {
+        bdump(is_writable(CHANDLER_ROOT . '/tmp/events.bin'));
+        if(file_exists(CHANDLER_ROOT . '/tmp/events.bin') == false || is_writable(CHANDLER_ROOT . '/tmp/events.bin') == false)
+            $this->flash("warn", tr("admin_longpool_broken"), tr("admin_longpool_broken_desc", CHANDLER_ROOT . '/tmp/events.bin'));
     }
     
     private function searchResults(object $repo, &$count)
@@ -65,7 +83,7 @@ final class AdminPresenter extends OpenVKPresenter
     
     function renderIndex(): void
     {
-        
+        $this->warnIfLongpoolBroken();
     }
     
     function renderUsers(): void
@@ -99,8 +117,10 @@ final class AdminPresenter extends OpenVKPresenter
                 if($user->onlineStatus() != $this->postParam("online")) $user->setOnline(intval($this->postParam("online")));
                 $user->setVerified(empty($this->postParam("verify") ? 0 : 1));
                 if($this->postParam("add-to-group")) {
-                    $query = "INSERT INTO `ChandlerACLRelations` (`user`, `group`) VALUES ('" . $user->getChandlerGUID() . "', '" . $this->postParam("add-to-group") . "')";
-                    DatabaseConnection::i()->getConnection()->query($query);
+                    if (!(new ChandlerGroups)->isUserAMember($user->getChandlerGUID(), $this->postParam("add-to-group"))) {
+                        $query = "INSERT INTO `ChandlerACLRelations` (`user`, `group`) VALUES ('" . $user->getChandlerGUID() . "', '" . $this->postParam("add-to-group") . "')";
+                        DatabaseConnection::i()->getConnection()->query($query);
+                    }
                 }
                 if($this->postParam("password")) {
                     $user->getChandlerUser()->updatePassword($this->postParam("password"));
@@ -142,11 +162,11 @@ final class AdminPresenter extends OpenVKPresenter
                 $club->setVerified(empty($this->postParam("verify") ? 0 : 1));
                 $club->setHide_From_Global_Feed(empty($this->postParam("hide_from_global_feed") ? 0 : 1));
                 $club->setEnforce_Hiding_From_Global_Feed(empty($this->postParam("enforce_hiding_from_global_feed") ? 0 : 1));
-                $club->setDeleted(empty($this->postParam("deleted") ? 0 : 1));
                 $club->save();
                 break;
             case "ban":
-                $club->setBlock_reason($this->postParam("ban_reason"));
+                $reason = mb_strlen(trim($this->postParam("ban_reason"))) > 0 ? $this->postParam("ban_reason") : NULL;
+                $club->setBlock_reason($reason);
                 $club->save();
                 break;
         }
@@ -296,7 +316,7 @@ final class AdminPresenter extends OpenVKPresenter
                     $this->notFound();
                 
                 $gift->delete();
-                $this->flashFail("succ", "Gift moved successfully", "This gift will now be in <b>Recycle Bin</b>.");
+                $this->flashFail("succ", tr("admin_gift_moved_successfully"), tr("admin_gift_moved_to_recycle"));
                 break;
             case "copy":
             case "move":
@@ -315,7 +335,7 @@ final class AdminPresenter extends OpenVKPresenter
                 $catTo->addGift($gift);
                 
                 $name = $catTo->getName();
-                $this->flash("succ", "Gift moved successfully", "This gift will now be in <b>$name</b>.");
+                $this->flash("succ", tr("admin_gift_moved_successfully"), "This gift will now be in <b>$name</b>.");
                 $this->redirect("/admin/gifts/" . $catTo->getSlug() . "." . $catTo->getId() . "/");
                 break;
             default:
@@ -346,10 +366,10 @@ final class AdminPresenter extends OpenVKPresenter
                 $gift->setUsages((int) $this->postParam("usages"));
                 if(isset($_FILES["pic"]) && $_FILES["pic"]["error"] === UPLOAD_ERR_OK) {
                     if(!$gift->setImage($_FILES["pic"]["tmp_name"]))
-                        $this->flashFail("err", "Не удалось сохранить подарок", "Изображение подарка кривое.");
+                        $this->flashFail("err", tr("error_when_saving_gift"), tr("error_when_saving_gift_bad_image"));
                 } else if($gen) {
                     # If there's no gift pic but it's newly created
-                    $this->flashFail("err", "Не удалось сохранить подарок", "Пожалуйста, загрузите изображение подарка.");
+                    $this->flashFail("err", tr("error_when_saving_gift"), tr("error_when_saving_gift_no_image"));
                 }
                 
                 $gift->save();
@@ -373,13 +393,19 @@ final class AdminPresenter extends OpenVKPresenter
     {
         $this->assertNoCSRF();
 
-        $unban_time = strtotime($this->queryParam("date")) ?: NULL;
+        if (str_contains($this->queryParam("reason"), "*"))
+            exit(json_encode([ "error" => "Incorrect reason" ]));
+
+        $unban_time = strtotime($this->queryParam("date")) ?: "permanent";
 
         $user = $this->users->get($id);
         if(!$user)
             exit(json_encode([ "error" => "User does not exist" ]));
-        
-        $user->ban($this->queryParam("reason"), true, $unban_time);
+
+        if ($this->queryParam("incr"))
+            $unban_time = time() + $user->getNewBanTime();
+
+        $user->ban($this->queryParam("reason"), true, $unban_time, $this->user->identity->getId());
         exit(json_encode([ "success" => true, "reason" => $this->queryParam("reason") ]));
     }
 
@@ -390,9 +416,17 @@ final class AdminPresenter extends OpenVKPresenter
         $user = $this->users->get($id);
         if(!$user)
             exit(json_encode([ "error" => "User does not exist" ]));
-        
+
+        $ban = (new Bans)->get((int)$user->getRawBanReason());
+        if (!$ban || $ban->isOver())
+            exit(json_encode([ "error" => "User is not banned" ]));
+
+        $ban->setRemoved_Manually(true);
+        $ban->setRemoved_By($this->user->identity->getId());
+        $ban->save();
+
         $user->setBlock_Reason(NULL);
-        $user->setUnblock_time(NULL);
+        // $user->setUnblock_time(NULL);
         $user->save();
         exit(json_encode([ "success" => true ]));
     }
@@ -476,6 +510,14 @@ final class AdminPresenter extends OpenVKPresenter
         $link->delete(false);
 
         $this->redirect("/admin/bannedLinks");
+    }
+
+    function renderBansHistory(int $user_id) :void
+    {
+        $user = (new Users)->get($user_id);
+        if (!$user) $this->notFound();
+
+        $this->template->bans = (new Bans)->getByUser($user_id);
     }
 
     function renderChandlerGroups(): void
@@ -647,281 +689,8 @@ final class AdminPresenter extends OpenVKPresenter
             $this->template->obj_type = $obj_type;
         }
 
-        $this->template->logs = (new Logs)->search($filter);
+        $logs = iterator_to_array((new Logs)->search($filter));
+        $this->template->logs = $logs;
         $this->template->object_types = (new Logs)->getTypes();
-    }
-
-    function renderBanClub(int $id)
-    {
-        if($_SERVER["REQUEST_METHOD"] !== "POST")
-            $this->notFound();
-
-        $this->assertNoCSRF();
-
-        $club = $this->clubs->get($id);
-
-        if(!$club)
-            exit(json_encode([ "error" => "Club does not exist" ]));
-
-        $club->setDeleted(1);
-        $club->setHide_From_Global_Feed(1);
-        $club->setShortcode(NULL);
-        $club->setBlock_reason(!empty($this->postParam("block_reason")) && !is_null($this->postParam("block_reason")) ? $this->postParam("block_reason") : "хз");
-
-        if($club->getOwner() && !$club->getOwner()->isDeleted()) {
-            $club->getOwner()->adminNotify("⚠️ " . tr("your_club_was_banned", $club->getName(), $this->postParam("block_reason")));
-        }
-
-        $club->save();
-        exit(json_encode([ "success" => true, "reason" => $this->queryParam("block_reason") ]));
-    }
-
-    function renderUnbanClub(int $id)
-    {
-        if($_SERVER["REQUEST_METHOD"] !== "POST")
-            $this->notFound();
-
-        $this->assertNoCSRF();
-
-        $club = $this->clubs->get($id);
-
-        if(!$club)
-            exit(json_encode([ "error" => "Club does not exist" ]));
-
-        if($club->hasBlockReason()) {
-            if($club->getOwner() && !$club->getOwner()->isDeleted()) {
-                $club->getOwner()->adminNotify("⚠️ " . tr("your_club_was_unbanned", $club->getName()));
-            }
-        }
-
-        $club->setDeleted(0);
-        $club->setHide_From_Global_Feed(0);
-        $club->setBlock_reason(NULL);
-
-        $club->save();
-        exit(json_encode([ "success" => true]));
-    }
-
-    function renderTranslation(): void
-    {
-        $lang = $this->queryParam("lang") ?? "ru";
-        $q = $this->queryParam("q");
-        $lines = [];
-        $new_key = true;
-
-        if ($lang === "any" || $this->queryParam("langs")) {
-            if (!$q || trim($q) === "") {
-                $this->flashFail("err", tr("translation_enter_query_first"));
-                return;
-            }
-
-            $locales = $this->queryParam("langs") ? explode(",", $this->queryParam("langs")) : array_filter(scandir(__DIR__ . "/../../locales/"), function ($file) {
-                return preg_match('/\.strings$/', $file);
-            });
-
-            $_locales = [];
-            foreach ($locales as $locale)
-                $_locales[] = explode(".", $locale)[0];
-
-            foreach ($locales as $locale) {
-                $handle = fopen(__DIR__ . "/../../locales/$locale" . ($this->queryParam("langs") ? ".strings" : ''), "r");
-                if ($handle) {
-                    $i = 0;
-                    while (($line = fgets($handle)) !== false) {
-                        $i++;
-                        if (preg_match('/"(.*)" = "(.*)"(;)?/', $line, $matches)) {
-                            $val = ["index" => $i, "key" => $matches[1], "lang" => explode(".", $locale)[0], "value" => $matches[2]];
-                            if (!in_array($val["key"], ["__locale", "__WinEncoding", "__transNames"])) {
-                                if ($q) {
-                                    if (str_contains($q, "key:")) {
-                                        continue;
-                                    } else if (str_contains($q, "value:")) {
-                                        $_exact_value_match = preg_match('/value:(.*)/', $q, $_value_matches);
-                                        if ($_exact_value_match && $_value_matches[1] !== $val["value"]) {
-                                            continue;
-                                        }
-                                    } else {
-                                        if (!str_contains(mb_strtolower($line), mb_strtolower($q))) {
-                                            continue;
-                                        }
-                                    }
-                                }
-                                $lines[] = $val;
-                            }
-                        }
-                    }
-                    fclose($handle);
-                    $new_key = false;
-                } else {
-                    $this->flash("err", tr("translation_locale_file_not_found"));
-                }
-            }
-
-            if (str_contains($q, "key:")) {
-                $_exact_key_match = preg_match('/key:(.*)/', $q, $_key_matches);
-                if ($_exact_key_match && $_key_matches[1]) {
-                    $i = 0;
-                    $used_langs = [];
-                    foreach ($_locales as $locale) {
-                        if ($i === sizeof($_locales)) break;
-                        $handle = fopen(__DIR__ . "/../../locales/$locale.strings", "r");
-                        $value = "";
-                        if ($handle) {
-                            while (($line = fgets($handle)) !== false) {
-                                if (preg_match('/"(' . $_key_matches[1] . ')" = "(.*)"(;)?/', $line, $matches)) {
-                                    $value = $matches[2];
-                                }
-                                $new_key = isset($value);
-
-                            }
-                            fclose($handle);
-                        }
-
-                        if (!in_array($locale, $used_langs)) {
-                            $lines[] = ["index" => $i, "key" => $_key_matches[1], "lang" => $locale, "value" => $value];
-                        }
-                        $used_langs[] = $locale;
-                        $i++;
-                    }
-                }
-            }
-        } else {
-            $new_key = false;
-            $handle = fopen(__DIR__ . "/../../locales/$lang.strings", "r");
-            if ($handle) {
-                $i = 0;
-                while (($line = fgets($handle)) !== false) {
-                    $i++;
-                    if (preg_match('/"(.*)" = "(.*)"(;)?/', $line, $matches)) {
-                        $val = ["index" => $i, "key" => $matches[1], "lang" => $lang, "value" => $matches[2]];
-                        if (!in_array($val["key"], ["__locale", "__WinEncoding", "__transNames"])) {
-                            if ($q) {
-                                if (str_contains($q, "key:")) {
-                                    $_exact_key_match = preg_match('/key:(.*)/', $q, $_key_matches);
-                                    if ($_exact_key_match && $_key_matches[1] !== $val["key"]) {
-                                        continue;
-                                    }
-                                } else if (str_contains($q, "value:")) {
-                                    $_exact_value_match = preg_match('/value:(.*)/', $q, $_value_matches);
-                                    if ($_exact_value_match && $_value_matches[1] !== $val["value"]) {
-                                        continue;
-                                    }
-                                } else {
-                                    if (!str_contains(mb_strtolower($line), mb_strtolower($q))) {
-                                        continue;
-                                    }
-                                }
-                            }
-                            $lines[] = $val;
-                        }
-                    }
-                }
-                fclose($handle);
-            } else {
-                $this->flash("err", tr("translation_locale_file_not_found"));
-            }
-        }
-
-        $this->template->languages = getLanguages();
-        $this->template->activeLang = $lang;
-        $this->template->keys = $lines;
-        $this->template->q = str_replace('"', '', $q);
-        $this->template->scrollTo = $this->queryParam("s");
-        $this->template->langs = $this->queryParam("langs");
-        $this->template->new_key = $new_key;
-    }
-
-    function renderTranslateKey(): void
-    {
-        if ($_SERVER["REQUEST_METHOD"] === "POST") {
-            $this->assertNoCSRF();
-
-            if (empty($this->postParam("strings"))) {
-                $lang = $this->postParam("lang");
-                $key = $this->postParam("key");
-                $value = addslashes($this->postParam("value"));
-
-                $handle = fopen(__DIR__ . "/../../locales/$lang.strings", "c");
-                if ($handle) {
-                    if ($this->postParam("act") !== "delete") {
-                        $file = file_get_contents(__DIR__ . "/../../locales/$lang.strings");
-                        if ($file) {
-                            $handle = fopen(__DIR__ . "/../../locales/$lang.strings", "c");
-                            if (preg_match('/"(' . $key . ')" = "(.*)";/', $file)) {
-                                $replacement = rtrim(preg_replace('/"(' . $key . ')" = "(.*)";/', '"$1" = "' . $value . '";', $file), "");
-
-                                if (file_put_contents(__DIR__ . "/../../locales/$lang.strings", $replacement)) {
-                                    fclose($handle);
-                                    $this->returnJson(["success" => true]);
-                                } else {
-                                    fclose($handle);
-                                    $this->returnJson(["success" => false, "error" => tr("translation_file_writing_error")]);
-                                }
-                            } else {
-                                $file .= "\"$key\" = \"$value\";\n";
-                                if (fwrite($handle, $file)) {
-                                    fclose($handle);
-                                    $this->returnJson(["success" => true]);
-                                } else {
-                                    fclose($handle);
-                                    $this->returnJson(["success" => false, "error" => tr("translation_file_writing_error")]);
-                                }
-                            }
-                        } else {
-                            $this->returnJson(["success" => false, "error" => tr("translation_locale_file_not_found")]);
-                        }
-                    } else {
-                        $file = file(__DIR__ . "/../../locales/$lang.strings");
-                        $new_file = [];
-                        foreach ($file as &$line) {
-                            if (!preg_match('/"(' . $key . ')" = "(' . $value . ')";/', $line)) {
-                                $new_file[] = $line;
-                            }
-                        }
-                        file_put_contents(__DIR__ . "/../../locales/$lang.strings", implode("", $new_file));
-                        fclose($handle);
-                        $this->returnJson(["success" => true]);
-                    }
-                } else {
-                    $this->returnJson(["success" => false, "error" => tr("translation_file_reading_error")]);
-                }
-            } else {
-                $objects = explode(";", $this->postParam("strings"));
-                if (sizeof($objects) < 2) {
-                    $this->returnJson(["success" => false, "error" => tr("translation_enter_at_least_two_values")]);
-                }
-
-                $succ = 0;
-                foreach ($objects as $object) {
-                    $data = explode(":", $object);
-                    $lang = $data[0];
-                    $key = $data[1];
-                    $value = addslashes($data[2]);
-
-                    $file = file_get_contents(__DIR__ . "/../../locales/$lang.strings");
-                    if ($file) {
-                        $handle = fopen(__DIR__ . "/../../locales/$lang.strings", "c");
-                        if ($handle) {
-                            if (preg_match('/"(' . $key . ')" = "(.*)";/', $file)) {
-                                $replacement = preg_replace('/"(' . $key . ')" = "(.*)";/', '"$1" = "' . $value . '";', $file);
-                                if (file_put_contents(__DIR__ . "/../../locales/$lang.strings", $replacement)) {
-                                    $succ++;
-                                }
-                            } else {
-                                $file .= "\"$key\" = \"$value\";\n";
-                                if (fwrite($handle, $file)) {
-                                    $succ++;
-                                }
-                            }
-                            fclose($handle);
-                        }
-                    }
-                }
-
-                $this->returnJson(["success" => true, "count" => $succ]);
-            }
-        } else {
-            $this->notFound();
-        }
     }
 }

@@ -31,7 +31,7 @@ class GiftCategory extends RowModel
     
     function getSlug(): string
     {
-        return str_replace("ʹ", "-", 'Transliterator'::createFromRules(
+        return str_replace("ʹ", "-", Transliterator::createFromRules(
             ":: Any-Latin;"
             . ":: NFD;"
             . ":: [:Nonspacing Mark:] Remove;"

@@ -3,21 +3,11 @@ namespace openvk\Web\Presenters;
 use Nette\InvalidStateException;
 use openvk\Web\Util\Sms;
 use openvk\Web\Themes\Themepacks;
-use openvk\Web\Models\Entities\Photo;
-use openvk\Web\Models\Entities\Post;
-use openvk\Web\Models\Repositories\Users;
-use openvk\Web\Models\Repositories\Clubs;
-use openvk\Web\Models\Repositories\Albums;
-use openvk\Web\Models\Repositories\Videos;
-use openvk\Web\Models\Repositories\Notes;
-use openvk\Web\Models\Repositories\Vouchers;
-use openvk\Web\Models\Repositories\FriendsLists;
-use openvk\Web\Models\Repositories\EmailChangeVerifications;
-use openvk\Web\Models\Repositories\Audios;
+use openvk\Web\Models\Entities\{Photo, Post, EmailChangeVerification};
+use openvk\Web\Models\Entities\Notifications\{CoinsTransferNotification, RatingUpNotification};
+use openvk\Web\Models\Repositories\{Users, Clubs, Albums, Videos, Notes, Vouchers, EmailChangeVerifications, Audios};
 use openvk\Web\Models\Exceptions\InvalidUserNameException;
 use openvk\Web\Util\Validator;
-use openvk\Web\Models\Entities\Notifications\{CoinsTransferNotification, RatingUpNotification};
-use openvk\Web\Models\Entities\EmailChangeVerification;
 use Chandler\Security\Authenticator;
 use lfkeitel\phptotp\{Base32, Totp};
 use chillerlan\QRCode\{QRCode, QROptions};
@@ -26,34 +16,34 @@ use Nette\Database\UniqueConstraintViolationException;
 final class UserPresenter extends OpenVKPresenter
 {
     private $users;
-	public $deactivationTolerant = false;
+    public $deactivationTolerant = false;
     protected $presenterName = "user";
-	
+
     function __construct(Users $users)
     {
         $this->users = $users;
-        
+
         parent::__construct();
     }
     
     function renderView(int $id): void
     {
         $user = $this->users->get($id);
-        if(!$user || $user->isDeleted())
+        if(!$user || $user->isDeleted() || !$user->canBeViewedBy($this->user->identity)) {
             if(!is_null($user) && $user->isDeactivated()) {
                 $this->template->_template = "User/deactivated.xml";
-
+                
+                $this->template->user = $user;
+            } else if(!is_null($user) && !$user->canBeViewedBy($this->user->identity)) {
+                $this->template->_template = "User/private.xml";
+                
                 $this->template->user = $user;
             } else {
                 $this->template->_template = "User/deleted.xml";
             }
-        else {
-            if($user->getShortCode())
-                if(parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH) !== "/" . $user->getShortCode())
-                    $this->redirect("/" . $user->getShortCode(), static::REDIRECT_TEMPORARY_PRESISTENT);
-            
+        } else {
             $this->template->albums      = (new Albums)->getUserAlbums($user);
-			$this->template->avatarAlbum = (new Albums)->getUserAvatarAlbum($user);
+            $this->template->avatarAlbum = (new Albums)->getUserAvatarAlbum($user);
             $this->template->albumsCount = (new Albums)->getUserAlbumsCount($user);
             $this->template->videos      = (new Videos)->getByUser($user, 1, 2);
             $this->template->videosCount = (new Videos)->getUserVideosCount($user);
@@ -62,8 +52,12 @@ final class UserPresenter extends OpenVKPresenter
             $this->template->audios      = (new Audios)->getRandomThreeAudiosByEntityId($user->getId());
             $this->template->audiosCount = (new Audios)->getUserCollectionSize($user);
             $this->template->audioStatus = $user->getCurrentAudioStatus();
-            
+
             $this->template->user = $user;
+
+            if($id !== $this->user->id) {
+                $this->template->ignore_status = $user->isIgnoredBy($this->user->identity);
+            }
         }
     }
     
@@ -81,29 +75,17 @@ final class UserPresenter extends OpenVKPresenter
             $this->template->user = $user;
         
         $this->template->mode = in_array($this->queryParam("act"), [
-            "incoming", "outcoming", "friends", "list", "bdays"
+            "incoming", "outcoming", "friends"
         ]) ? $this->queryParam("act")
            : "friends";
-        $this->template->page    = $page;
-        $this->template->frlists = (new FriendsLists)->getUserFriendsLists($user, 1, OPENVK_ROOT_CONF["openvk"]["preferences"]["maxFriendsLists"]);
-
-        if($this->template->mode == "list") {
-            $listf = (new FriendsLists)->get((int)$this->queryParam("list"));
-
-            if(!$listf || $listf->isDeleted() || $listf->getOwner()->getId() != $this->user->id) {
-                $this->notFound();
-            }
-
-            $this->template->list = $listf;
-
-        }
+        $this->template->page = $page;
         
         if(!is_null($this->user)) {
             if($this->template->mode !== "friends" && $this->user->id !== $id) {
                 $name = $user->getFullName();
-                $this->flash("err", "Ошибка доступа", "Вы не можете просматривать полный список подписок $name.");
+                $this->flash("err", tr("error_access_denied_short"), tr("error_viewing_subs", $name));
                 
-                $this->redirect("/id$id", static::REDIRECT_TEMPORARY_PRESISTENT);
+                $this->redirect($user->getURL());
             }
         }
     }
@@ -118,6 +100,9 @@ final class UserPresenter extends OpenVKPresenter
         elseif (!$user->getPrivacyPermission('groups.read', $this->user->identity ?? NULL))
             $this->flashFail("err", tr("forbidden"), tr("forbidden_comment"));
         else {
+            if($this->queryParam("act") === "managed" && $this->user->id !== $user->getId())
+                $this->flashFail("err", tr("forbidden"), tr("forbidden_comment"));
+
             $this->template->user = $user;
             $this->template->page = (int) ($this->queryParam("p") ?? 1);
             $this->template->admin = $this->queryParam("act") == "managed";
@@ -133,11 +118,11 @@ final class UserPresenter extends OpenVKPresenter
             $this->notFound();
 
         if(!$club->canBeModifiedBy($this->user->identity ?? NULL))
-            $this->flashFail("err", "Ошибка доступа", "У вас недостаточно прав, чтобы изменять этот ресурс.", NULL, true);
+            $this->flashFail("err", tr("error_access_denied_short"), tr("error_access_denied"), NULL, true);
 
         $isClubPinned = $this->user->identity->isClubPinned($club);
         if(!$isClubPinned && $this->user->identity->getPinnedClubCount() > 10)
-            $this->flashFail("err", "Ошибка", "Находится в левом меню могут максимум 10 групп", NULL, true);
+            $this->flashFail("err", tr("error"), tr("error_max_pinned_clubs"), NULL, true);
 
         if($club->getOwner()->getId() === $this->user->identity->getId()) {
             $club->setOwner_Club_Pinned(!$isClubPinned);
@@ -171,7 +156,7 @@ final class UserPresenter extends OpenVKPresenter
             if($_GET['act'] === "main" || $_GET['act'] == NULL) {
                 try {
                     $user->setFirst_Name(empty($this->postParam("first_name")) ? $user->getFirstName() : $this->postParam("first_name"));
-                    $user->setLast_Name(empty($this->postParam("last_name")) ? $user->getLastName() : $this->postParam("last_name"));
+                    $user->setLast_Name(empty($this->postParam("last_name")) ? "" : $this->postParam("last_name"));
                 } catch(InvalidUserNameException $ex) {
                     $this->flashFail("err", tr("error"), tr("invalid_real_name"));
                 }
@@ -224,8 +209,8 @@ final class UserPresenter extends OpenVKPresenter
                     $user->setEmail_Contact(empty($this->postParam("email_contact")) ? NULL : $this->postParam("email_contact"));
                 else
                     $this->flashFail("err", tr("invalid_email_address"), tr("invalid_email_address_comment"));
-				
-				$user->setKICQ(empty($this->postParam("kicq")) ? NULL : $this->postParam("kicq"));
+
+                    $user->setKICQ(empty($this->postParam("kicq")) ? NULL : $this->postParam("kicq"));
 
                 $telegram = $this->postParam("telegram");
                 if(empty($telegram) || Validator::i()->telegramValid($telegram))
@@ -248,39 +233,39 @@ final class UserPresenter extends OpenVKPresenter
                 $user->setInterests(empty($this->postParam("interests")) ? NULL : ovk_proc_strtr($this->postParam("interests"), 300));
                 $user->setFav_Music(empty($this->postParam("fav_music")) ? NULL : ovk_proc_strtr($this->postParam("fav_music"), 300));
                 $user->setFav_Films(empty($this->postParam("fav_films")) ? NULL : ovk_proc_strtr($this->postParam("fav_films"), 300));
-				$user->setFav_Games(empty($this->postParam("fav_games")) ? NULL : ovk_proc_strtr($this->postParam("fav_games"), 300));
+                $user->setFav_Games(empty($this->postParam("fav_games")) ? NULL : ovk_proc_strtr($this->postParam("fav_games"), 300));
                 $user->setFav_Shows(empty($this->postParam("fav_shows")) ? NULL : ovk_proc_strtr($this->postParam("fav_shows"), 300));
                 $user->setFav_Books(empty($this->postParam("fav_books")) ? NULL : ovk_proc_strtr($this->postParam("fav_books"), 300));
                 $user->setFav_Quote(empty($this->postParam("fav_quote")) ? NULL : ovk_proc_strtr($this->postParam("fav_quote"), 300));
                 $user->setAbout(empty($this->postParam("about")) ? NULL : ovk_proc_strtr($this->postParam("about"), 300));
-			} elseif($_GET["act"] === "backdrop") {
+            } elseif($_GET["act"] === "backdrop") {
                 if($this->postParam("subact") === "remove") {
                     $user->unsetBackDropPictures();
                     $user->save();
                     $this->flashFail("succ", tr("backdrop_succ_rem"), tr("backdrop_succ_desc")); # will exit
                 }
-
+    
                 $pic1 = $pic2 = NULL;
                 try {
                     if($_FILES["backdrop1"]["error"] !== UPLOAD_ERR_NO_FILE)
                         $pic1 = Photo::fastMake($user->getId(), "Profile backdrop (system)", $_FILES["backdrop1"]);
-
+    
                     if($_FILES["backdrop2"]["error"] !== UPLOAD_ERR_NO_FILE)
                         $pic2 = Photo::fastMake($user->getId(), "Profile backdrop (system)", $_FILES["backdrop2"]);
                 } catch(InvalidStateException $e) {
                     $this->flashFail("err", tr("backdrop_error_title"), tr("backdrop_error_no_media"));
                 }
-
+                
                 if($pic1 == $pic2 && is_null($pic1))
                     $this->flashFail("err", tr("backdrop_error_title"), tr("backdrop_error_no_media"));
-
+                
                 $user->setBackDropPictures($pic1, $pic2);
                 $user->save();
-                $this->flashFail("succ", tr("backdrop_succ"), tr("backdrop_succ_desc"));	
+                $this->flashFail("succ", tr("backdrop_succ"), tr("backdrop_succ_desc"));
             } elseif($_GET['act'] === "status") {
                 if(mb_strlen($this->postParam("status")) > 255) {
                     $statusLength = (string) mb_strlen($this->postParam("status"));
-                    $this->flashFail("err", "Ошибка", "Статус слишком длинный ($statusLength символов вместо 255 символов)", NULL, true);
+                    $this->flashFail("err", tr("error"), tr("error_status_too_long", $statusLength), NULL, true);
                 }
 
                 $user->setStatus(empty($this->postParam("status")) ? NULL : $this->postParam("status"));
@@ -325,7 +310,7 @@ final class UserPresenter extends OpenVKPresenter
         
         if($_SERVER["REQUEST_METHOD"] === "POST") {
             if(!$user->verifyNumber($this->postParam("code") ?? 0))
-                $this->flashFail("err", "Ошибка", "Не удалось подтвердить номер телефона: неверный код.");
+                $this->flashFail("err", tr("error"), tr("invalid_code"));
         
             $this->flash("succ", tr("changes_saved"), tr("changes_saved_comment"));
         }
@@ -340,23 +325,16 @@ final class UserPresenter extends OpenVKPresenter
         
         $user = $this->users->get((int) $this->postParam("id"));
         if(!$user) exit("Invalid state");
-        if ($user->isServiceAccount())
-            $this->flashFail("err", tr("error"), tr("forbidden"));
         
-            if ($this->postParam("act") == "rej")
+        if ($this->postParam("act") == "rej")
             $user->changeFlags($this->user->identity, 0b10000000, true);
         else
             $user->toggleSubscription($this->user->identity);
-		
-		foreach($user->getUsersLists($this->user->identity) as $list) {
-            $list->deleteFriend($user);
-        }
         
-        $this->redirect("/id" . $user->getId());
+        $this->redirect($_SERVER['HTTP_REFERER']);
     }
     
-    function renderSetAvatar()
-    {
+    function renderSetAvatar() {
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
         
@@ -523,9 +501,9 @@ final class UserPresenter extends OpenVKPresenter
                     $input = $this->postParam(str_replace(".", "_", $setting));
                     $user->setPrivacySetting($setting, min(3, (int)abs((int)$input ?? $user->getPrivacySetting($setting))));
                 }
+
                 $prof = $this->postParam("profile_type") == 1 || $this->postParam("profile_type") == 0 ? (int)$this->postParam("profile_type") : 0;
                 $user->setProfile_type($prof);
-                $user->save();
                 
             } else if($_GET['act'] === "finance.top-up") {
                 $token   = $this->postParam("key0") . $this->postParam("key1") . $this->postParam("key2") . $this->postParam("key3");
@@ -560,12 +538,9 @@ final class UserPresenter extends OpenVKPresenter
                 
                 if(in_array($this->postParam("nsfw"), [0, 1, 2]))
                     $user->setNsfwTolerance((int) $this->postParam("nsfw"));
-				
-				if(in_array($this->postParam("main_page"), [0, 1]))
+
+                if(in_array($this->postParam("main_page"), [0, 1]))
                     $user->setMain_Page((int) $this->postParam("main_page"));
-                
-                if(in_array($this->postParam("paginator"), [0, 1]))
-                    $user->setPaginator_type((int) $this->postParam("paginator"));
             } else if($_GET['act'] === "lMenu") {
                 $settings = [
                     "menu_bildoj"    => "photos",
@@ -608,13 +583,13 @@ final class UserPresenter extends OpenVKPresenter
 
             $this->template->qrCodeType = substr($qrCode[0], 5);
             $this->template->qrCodeData = $qrCode[1];
-        }    
-
+        }
+        
         $this->template->user   = $user;
         $this->template->themes = Themepacks::i()->getThemeList();
     }
-	
-	function renderDeactivate(): void
+
+    function renderDeactivate(): void
     {
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
@@ -720,7 +695,7 @@ final class UserPresenter extends OpenVKPresenter
             $this->user->identity->save();
         }
 
-        $this->redirect("/", static::REDIRECT_TEMPORARY_PRESISTENT);
+        $this->redirect("/");
     }
 
     function renderCoinsTransfer(): void
@@ -750,9 +725,6 @@ final class UserPresenter extends OpenVKPresenter
 
         if($this->user->identity->getCoins() < $value)
             $this->flashFail("err", tr("failed_to_tranfer_points"), tr("you_dont_have_enough_points"));
-
-        if ($receiver->isServiceAccount())
-            $this->flashFail("err", tr("error"), tr("forbidden"));    
 
         if($this->user->id !== $receiver->getId()) {
             $this->user->identity->setCoins($this->user->identity->getCoins() - $value);
@@ -794,9 +766,6 @@ final class UserPresenter extends OpenVKPresenter
 
         if($this->user->identity->getCoins() < $value)
             $this->flashFail("err", tr("failed_to_increase_rating"), tr("you_dont_have_enough_points"));
-
-        if ($receiver->isServiceAccount())
-            $this->flashFail("err", tr("error"), tr("forbidden"));    
 
         $this->user->identity->setCoins($this->user->identity->getCoins() - $value);
         $this->user->identity->save();

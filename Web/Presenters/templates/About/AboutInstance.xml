@@ -17,6 +17,7 @@
                             <li><span>{tr("about_users", $usersStats->all)|noescape}</span></li>
                             <li><span>{tr("about_online_users", $usersStats->online)|noescape}</span></li>
                             <li><span>{tr("about_active_users", $usersStats->active)|noescape}</span></li>
+                            <li><span>{tr("about_groups", $clubsCount)|noescape}</span></li>
                             <li><span>{tr("about_wall_posts", $postsCount)|noescape}</span></li>
                         </ul>
                     </div>
@@ -49,3 +50,30 @@
             </tr>
         </tbody>
     </table>
+
+    {if sizeof($popularClubs) !== 0}
+        <h4>{_most_popular_groups}</h4>
+        {var $entries = array_chunk($popularClubs, 10, true)}
+        <table width="100%" cellspacing="0" cellpadding="0">
+            <tbody>
+                <tr valign="top">
+                    <td n:foreach="$entries as $chunk">
+                        <ol>
+                            <li value="{$num+1}" style="margin-top: 5px;" n:foreach="$chunk as $num => $club">
+                                <a href="{$club->club->getURL()}">{$club->club->getName()}</a>
+                                <div>
+                                    {tr("participants", $club->subscriptions)}
+                                </div>
+                            </li>
+                        </ol>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    {/if}
+
+    <h4>{_rules}</h4>
+    <div style="margin-top: 16px;">
+        {tr("about_watch_rules", "/terms")|noescape}
+    </div>
+{/block}

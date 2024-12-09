@@ -33,12 +33,6 @@ class Gifts
         
         return new GiftCategory($cat);
     }
-
-    function getCategoriesCount(): int
-    {
-        $cats  = $this->cats->where("deleted", false);
-        return $cats->count();
-    }
     
     function getCategories(int $page, ?int $perPage = NULL, &$count = nullptr): \Traversable
     {
@@ -47,5 +41,11 @@ class Gifts
         $cats  = $cats->page($page, $perPage ?? OPENVK_DEFAULT_PER_PAGE);
         foreach($cats as $cat)
             yield new GiftCategory($cat);
+    }
+
+    function getCategoriesCount(): int
+    {
+        $cats  = $this->cats->where("deleted", false);
+        return $cats->count();
     }
 }

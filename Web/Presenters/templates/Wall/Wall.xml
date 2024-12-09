@@ -1,10 +1,10 @@
 {extends "../@layout.xml"}
-{block title}{_"wall"}{/block}
+{block title}{_wall}{/block}
 
 {block header}
     <a href="{$oObj->getURL()}">{$oObj->getCanonicalName()}</a>
     »
-    {_"wall"} 
+    {_wall} 
     <div style="float:right;">
         <span>
             <b>{tr("wall", $count)}</b>
@@ -28,16 +28,16 @@
             </div>
 
             <div n:if="$canPost && $type == 'all'" class="content_subtitle">
-                {include "../components/textArea.xml", route => "/wall$owner/makePost", geo => true}
+                {include "../components/textArea.xml", route => "/wall$owner/makePost", graffiti => true, polls => true, notes => true, hasSource => true}
             </div>
             
-            <div class="content infContainer">
+            <div class="content scroll_container">
                 {if sizeof($posts) > 0}
-                    {foreach $posts as $post}
+                    <div class='scroll_node' n:foreach='$posts as $post'>
                         <a name="postGarter={$post->getId()}"></a>
                         
                         {include "../components/post.xml", post => $post, commentSection => true}
-                    {/foreach}
+                    </div>
                     {include "../components/paginator.xml", conf => $paginatorConf}
                 {else}
                     {_no_posts_abstract}
@@ -45,8 +45,4 @@
             </div>
         </div>
     </div>
-
-    {if isset($thisUser) && $thisUser->hasMicroblogEnabled()}
-        {script "js/al_comments.js"}
-    {/if}
 {/block}

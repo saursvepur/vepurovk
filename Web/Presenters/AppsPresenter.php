@@ -16,8 +16,6 @@ final class AppsPresenter extends OpenVKPresenter
     
     function renderPlay(int $app): void
     {
-        header("Access-Control-Allow-Origin: *");
-
         $this->assertUserLoggedIn();
     
         $app = $this->apps->get($app);

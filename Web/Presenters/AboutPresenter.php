@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 namespace openvk\Web\Presenters;
 use openvk\Web\Themes\Themepacks;
-use openvk\Web\Models\Repositories\{Users, Managers, Posts};
+use openvk\Web\Models\Repositories\{Users, Managers, Clubs, Posts};
 use openvk\Web\Util\Localizator;
 use Chandler\Session\Session;
 
@@ -9,7 +9,7 @@ final class AboutPresenter extends OpenVKPresenter
 {
     protected $banTolerant = true;
     protected $activationTolerant = true;
-	protected $deactivationTolerant = true;
+    protected $deactivationTolerant = true;
     
     function renderIndex(): void
     {
@@ -43,8 +43,8 @@ final class AboutPresenter extends OpenVKPresenter
     
     function renderBB(): void
     {}
-	
-	function renderTour(): void
+
+    function renderTour(): void
     {}
     
     function renderInvite(): void
@@ -71,7 +71,9 @@ final class AboutPresenter extends OpenVKPresenter
     function renderAboutInstance(): void
     {
         $this->template->usersStats   = (new Users)->getStatistics();
+        $this->template->clubsCount   = (new Clubs)->getCount();
         $this->template->postsCount   = (new Posts)->getCount();
+        $this->template->popularClubs = [];
         $this->template->admins       = iterator_to_array((new Users)->getInstanceAdmins());
     }
     
@@ -83,8 +85,8 @@ final class AboutPresenter extends OpenVKPresenter
             $this->assertNoCSRF();
             setLanguage($_GET['lg']);
         }
-		
-		if(!is_null($_GET['jReturnTo']))
+
+        if(!is_null($_GET['jReturnTo']))
             $this->redirect(rawurldecode($_GET['jReturnTo']));
     }
 
@@ -95,7 +97,7 @@ final class AboutPresenter extends OpenVKPresenter
         if(is_null($lg))
             $this->throwError(404, "Not found", "Language is not found");
         header("Content-Type: application/javascript");
-        echo "window.lang = " . json_encode($localizer->export($lang)) . ";"; // привет хардкод :DDD
+        echo "window.lang = " . json_encode($localizer->export($lang)) . ";"; # привет хардкод :DDD
         exit;
     }
 
@@ -112,7 +114,11 @@ final class AboutPresenter extends OpenVKPresenter
         . "# covered from unauthorized persons (for example, due to\n"
         . "# lack of rights to access the admin panel)\n\n"
         . "User-Agent: *\n"
-		. "Disallow: /albums/create\n"
+        . "Disallow: /albums/create\n"
+        . "Disallow: /assets/packages/static/openvk/img/banned.jpg\n"   
+        . "Disallow: /assets/packages/static/openvk/img/camera_200.png\n"   
+        . "Disallow: /assets/packages/static/openvk/img/flags/\n"   
+        . "Disallow: /assets/packages/static/openvk/img/oof.apng\n"  
         . "Disallow: /videos/upload\n"
         . "Disallow: /invite\n"
         . "Disallow: /groups_create\n"
@@ -139,17 +145,12 @@ final class AboutPresenter extends OpenVKPresenter
 
     function renderHumansTxt(): void
     {
-        // :D
-
-        header("HTTP/1.1 302 Found");
-        header("Location: https://github.com/openvk/openvk#readme");
-        exit;
+        # :D
+        $this->redirect("https://github.com/openvk/openvk#readme");
     }
 
     function renderDev(): void
     {
-        header("HTTP/1.1 302 Found");
-        header("Location: https://docs.openvk.su/");
-        exit;
+        $this->redirect("https://docs.ovk.to/");
     }
 }

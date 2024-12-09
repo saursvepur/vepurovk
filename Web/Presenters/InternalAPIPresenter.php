@@ -30,9 +30,10 @@ final class InternalAPIPresenter extends OpenVKPresenter
     
     function renderRoute(): void
     {
-        if($_SERVER["REQUEST_METHOD"] !== "POST")
-            exit("здрасте блять а это апишечка и точка");
-        
+        if($_SERVER["REQUEST_METHOD"] !== "POST") {
+            header("HTTP/1.1 405 Method Not Allowed");
+            exit("ты дебил это точка апи");
+        }
         try {
             $input = (object) MessagePack::unpack(file_get_contents("php://input"));
         } catch (\Exception $ex) {
@@ -72,20 +73,21 @@ final class InternalAPIPresenter extends OpenVKPresenter
     }
 
     function renderTimezone() {
-        if($_SERVER["REQUEST_METHOD"] !== "POST")
-            exit("здрасте блять а это апишечка и точка");
-
+        if($_SERVER["REQUEST_METHOD"] !== "POST") {
+            header("HTTP/1.1 405 Method Not Allowed");
+            exit("ты дебил это метод апи");
+        }
         $sessionOffset = Session::i()->get("_timezoneOffset");
         if(is_numeric($this->postParam("timezone", false))) {
             $postTZ = intval($this->postParam("timezone", false));
             if ($postTZ != $sessionOffset || $sessionOffset == null) {
                 Session::i()->set("_timezoneOffset", $postTZ ? $postTZ : 3 * MINUTE );
                 $this->returnJson([
-                    "success" => 1 // If it's new value
+                    "success" => 1 # If it's new value
                 ]);
             } else {
                 $this->returnJson([
-                    "success" => 2 // If it's the same value (if for some reason server will call this func)
+                    "success" => 2 # If it's the same value (if for some reason server will call this func)
                 ]);
             }
         } else {
@@ -95,7 +97,7 @@ final class InternalAPIPresenter extends OpenVKPresenter
         }
     }
 
-function renderGetPhotosFromPost(int $owner_id, int $post_id) {
+    function renderGetPhotosFromPost(int $owner_id, int $post_id) {
         if($_SERVER["REQUEST_METHOD"] !== "POST") {
             header("HTTP/1.1 405 Method Not Allowed");
             exit("иди нахуй заебал");
@@ -106,6 +108,7 @@ function renderGetPhotosFromPost(int $owner_id, int $post_id) {
         } else {
             $post = (new Comments)->get($post_id);
         }
+    
 
         if(is_null($post)) {
             $this->returnJson([
@@ -118,9 +121,9 @@ function renderGetPhotosFromPost(int $owner_id, int $post_id) {
             {
                 if($attachment instanceof \openvk\Web\Models\Entities\Photo)
                 {
-                    $response[] = [
-                        "url" => $attachment->getURLBySizeId('normal'),
-                        "id"  => $attachment->getPrettyId()
+                    $response[$attachment->getPrettyId()] = [
+                        "url" => $attachment->getURLBySizeId('larger'),
+                        "id"  => $attachment->getPrettyId(),
                     ];
                 }
             }
@@ -128,6 +131,37 @@ function renderGetPhotosFromPost(int $owner_id, int $post_id) {
                 "success" => 1,
                 "body" => $response
             ]);
+        }
+    }
+
+    function renderGetPostTemplate(int $owner_id, int $post_id) {
+        if($_SERVER["REQUEST_METHOD"] !== "POST") {
+            header("HTTP/1.1 405 Method Not Allowed");
+            exit("ты‍ не по адресу");
+        }
+
+        $type = $this->queryParam("type", false);
+        if($type == "post") {
+            $post = (new Posts)->getPostById($owner_id, $post_id, true);
+        } else {
+            $post = (new Comments)->get($post_id);
+        }
+
+        if(!$post || !$post->canBeEditedBy($this->user->identity)) {
+            exit('');
+        }
+
+        header("Content-Type: text/plain");
+        
+        if($type == 'post') {
+            $this->template->_template = 'components/post.xml';
+            $this->template->post = $post;
+            $this->template->commentSection = false;
+        } elseif($type == 'comment') {
+            $this->template->_template = 'components/comment.xml';
+            $this->template->comment = $post;
+        } else {
+            exit('');
         }
     }
 }

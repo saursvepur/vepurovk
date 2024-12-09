@@ -118,11 +118,20 @@ class Note extends Postable
     {
         return $this->getRecord()->source;
     }
-	
-	function toVkApiStruct(?User $user = NULL): object
+    
+    function canBeViewedBy(?User $user = NULL): bool
+    {
+        if($this->isDeleted() || $this->getOwner()->isDeleted()) {
+            return false;
+        }
+
+        return $this->getOwner()->getPrivacyPermission('notes.read', $user) && $this->getOwner()->canBeViewedBy($user);
+    }
+
+    function toVkApiStruct(): object
     {
         $res = (object) [];
-        
+
         $res->type          = "note";
         $res->id            = $this->getVirtualId();
         $res->owner_id      = $this->getOwner()->getId();
@@ -136,20 +145,6 @@ class Note extends Postable
         $res->can_comment   = 1;
         $res->text_wiki     = "r";
 
-        if(!is_null($user)) {
-            $res->likes         = $this->getLikesCount();
-            $res->user_likes    = (bool)$this->hasLikeFrom($user);
-        }
-
         return $res;
-    }
-
-    function canBeViewedBy(?User $user = NULL): bool
-    {
-        if($this->isDeleted() || $this->getOwner()->isDeleted()) {
-            return false;
-        }
-
-        return $this->getOwner()->getPrivacyPermission('notes.read', $user) && $this->getOwner()->canBeViewedBy($user);
     }
 }

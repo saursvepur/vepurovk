@@ -45,13 +45,6 @@
     display: flex;
 }
 
-.archive-icon {
-    background: url('/assets/packages/static/openvk/img/archive.gif') no-repeat 0 0;
-    height: 12px;
-    margin: 4px 5px 0;
-    width: 10px;
-}
-
 .repost-icon {
     background: url('/assets/packages/static/openvk/img/published.gif') no-repeat 0 0;
     height: 12px;

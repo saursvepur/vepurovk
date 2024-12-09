@@ -5,42 +5,49 @@ use openvk\Web\Models\Entities\User;
 
 trait TIgnorable 
 {
-    function isIgnoredBy(User $user): bool
+    function isIgnoredBy(User $user = NULL): bool
     {
+        if(!$user)
+            return false;
+        
         $ctx  = DatabaseConnection::i()->getContext();
         $data = [
-            "owner"            => $user->getId(),
-            "ignored_source"   => $this->getRealId(),
+            "owner"  => $user->getId(),
+            "source" => $this->getRealId(),
         ];
 
         $sub = $ctx->table("ignored_sources")->where($data);
+        return $sub->count() > 0;
+    }
 
-        if(!$sub->fetch()) {
-            return false;
-        }
-
+    function addIgnore(User $for_user): bool
+    {
+        DatabaseConnection::i()->getContext()->table("ignored_sources")->insert([
+            "owner"  => $for_user->getId(),
+            "source" => $this->getRealId(),
+        ]);
+        
         return true;
     }
 
-    function getIgnoresCount()
+    function removeIgnore(User $for_user): bool
     {
-        return sizeof(DatabaseConnection::i()->getContext()->table("ignored_sources")->where("ignored_source", $this->getRealId()));
+        DatabaseConnection::i()->getContext()->table("ignored_sources")->where([
+            "owner"  => $for_user->getId(),
+            "source" => $this->getRealId(),
+        ])->delete();
+        
+        return true;
     }
 
-    function toggleIgnore(User $user): bool
+    function toggleIgnore(User $for_user): bool
     {
-        if($this->isIgnoredBy($user)) {
-            DatabaseConnection::i()->getContext()->table("ignored_sources")->where([
-                "owner"          => $user->getId(),
-                "ignored_source" => $this->getRealId(),
-            ])->delete();
+        if($this->isIgnoredBy($for_user)) {
+            $this->removeIgnore($for_user);
 
             return false;
         } else {
-            DatabaseConnection::i()->getContext()->table("ignored_sources")->insert([
-                "owner"          => $user->getId(),
-                "ignored_source" => $this->getRealId(),
-            ]);
+            $this->addIgnore($for_user);
 
             return true;
         }

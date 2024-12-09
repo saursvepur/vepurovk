@@ -161,6 +161,7 @@ function loadMoreSuggestedPosts() {
 // нажатие на "x предложенных записей"
 $(document).on("click", ".sugglist a", (e) => {
     e.preventDefault()
+    e.stopPropagation()
     
     if(e.currentTarget.getAttribute("data-toogled") == null || e.currentTarget.getAttribute("data-toogled") == "false") {
         e.currentTarget.setAttribute("data-toogled", "true")
@@ -201,7 +202,7 @@ $(document).on("click", ".sugglist a", (e) => {
 })
 
 // нажатие на пагинатор у постов предложки
-$(document).on("click", "#postz .paginator a", (e) => {
+/*$(document).on("click", "#postz .paginator a", (e) => {
     e.preventDefault()
     
     ky(e.currentTarget.href, {
@@ -228,4 +229,4 @@ $(document).on("click", "#postz .paginator a", (e) => {
             ]
         }
     })
-})
+})*/

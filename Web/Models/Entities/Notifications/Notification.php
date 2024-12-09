@@ -29,8 +29,8 @@ class Notification
     {
         return (int) json_decode(file_get_contents(__DIR__ . "/../../../../data/modelCodes.json"), true)[get_class($model)];
     }
-	
-	function reverseModelOrder(): bool
+    
+    function reverseModelOrder(): bool
     {
         return false;
     }

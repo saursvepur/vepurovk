@@ -2,7 +2,7 @@
 <html>
     <head>
         <meta charset="utf-8" />
-        <title>Получение доступа | VepurOVK</title>
+        <title>Получение доступа | OpenVK</title>
         <style>
             body {
                 margin: 0;
@@ -113,7 +113,7 @@
                 <div style="width: 85px;">
                 </div>
                 <div id="ovkLogo">
-                    <a href="/" target="_blank">V</a>
+                    <a href="/" target="_blank">O</a>
                 </div>
                 <div id="ovkUser">
                     <a href="/logout?hash={rawurlencode($csrfToken)}">{_header_log_out}</a>

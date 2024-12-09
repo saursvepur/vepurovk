@@ -123,8 +123,8 @@ class Albums
 
         return $dbalbum->collection ? $this->get($dbalbum->collection) : null;
     }
-	
-	function getAlbumByOwnerAndId(int $owner, int $id)
+
+    function getAlbumByOwnerAndId(int $owner, int $id)
     {
         $album = $this->albums->where([
             "owner" => $owner,

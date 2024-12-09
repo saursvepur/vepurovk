@@ -60,8 +60,8 @@ class Message extends RowModel
     {
         return new DateTime($this->getRecord()->created);
     }
-    
-	function getSendTimeHumanized(): string
+
+    function getSendTimeHumanized(): string
     {
         $dateTime = new DateTime($this->getRecord()->created);
 
@@ -71,7 +71,7 @@ class Message extends RowModel
             return $dateTime->format("%d.%m.%y");
         }
     }
-	
+    
     /**
      * Get date of last edit, if any edits were made, otherwise null.
      * 
@@ -126,7 +126,7 @@ class Message extends RowModel
                 $attachments[] = [
                     "type"  => "unknown"
                 ];
-
+                
                 # throw new \Exception("Unknown attachment type: " . get_class($attachment));
             }
         }
@@ -141,7 +141,7 @@ class Message extends RowModel
             ],
             "timing" => [
                 "sent"   => (string) $this->getSendTimeHumanized(),
-                "edited" => is_null($this->getEditTime()) ? null : (string) $this->getEditTime(),
+                "edited" => is_null($this->getEditTime()) ? NULL : (string) $this->getEditTime(),
             ],
             "text"        => $this->getText(),
             "read"        => !$this->isUnread(),

@@ -44,8 +44,8 @@ class Messages
             yield new Correspondence($correspondent, $anotherCorrespondent);
         }
     }
-	
-	function getCorrespondenciesCount(RowModel $correspondent): ?int
+    
+    function getCorrespondenciesCount(RowModel $correspondent): ?int
     {
         $id    = $correspondent->getId();
         $class = get_class($correspondent);

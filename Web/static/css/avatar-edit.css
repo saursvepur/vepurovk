@@ -44,7 +44,7 @@
 ._add_image::before {
     margin-top: 2px;
     content: ' ';
-    background: url('https://vepurovk.xyz/assets/packages/static/openvk/img/upload.png');
+    background: url('/assets/packages/static/openvk/img/upload.png?v=2');
     width: 10px;
     height: 10px;
     display: inline-block;
@@ -65,7 +65,7 @@
 
 .avatarDelete::before {
     content: ' ';
-    background: url('https://vepurovk.xyz/assets/packages/static/openvk/img/upload.png');
+    background: url('/assets/packages/static/openvk/img/upload.png?v=2');
     background-position: -10px 2px;
     background-repeat: no-repeat;
     width: 12px;
@@ -168,14 +168,14 @@ div.avatar_block:hover .avatar_variants {
 }
 
 .cropper-image-cont .rotateButtons ._rotateLeft {
-    background: url(https://raw.githubusercontent.com/openvk/openvk/77bd3932157618c29a9e345247af65300d8b98f5/Web/static/img/upload.png);
+    background: url(/assets/packages/static/openvk/img/upload.png);
     height: 20px;
     width: 23px;
     background-position: -23px 0px;
 }
 
 .cropper-image-cont .rotateButtons ._rotateRight {
-    background: url(https://raw.githubusercontent.com/openvk/openvk/77bd3932157618c29a9e345247af65300d8b98f5/Web/static/img/upload.png);
+    background: url(/assets/packages/static/openvk/img/upload.png);
     height: 18px;
     width: 22px;
     background-position: -46px 0px;

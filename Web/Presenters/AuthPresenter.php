@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 namespace openvk\Web\Presenters;
-use openvk\Web\Models\Entities\{IP, User, PasswordReset, EmailVerification, FriendsList};
-use openvk\Web\Models\Repositories\{IPs, Users, Restores, Verifications};
+use openvk\Web\Models\Entities\{IP, User, PasswordReset, EmailVerification};
+use openvk\Web\Models\Repositories\{Bans, IPs, Users, Restores, Verifications};
 use openvk\Web\Models\Exceptions\InvalidUserNameException;
 use openvk\Web\Util\Validator;
 use Chandler\Session\Session;
@@ -80,15 +80,15 @@ final class AuthPresenter extends OpenVKPresenter
             
             if(!Validator::i()->emailValid($this->postParam("email")))
                 $this->flashFail("err", tr("invalid_email_address"), tr("invalid_email_address_comment"));
-			
-			if(OPENVK_ROOT_CONF['openvk']['preferences']['security']['forceStrongPassword'])
+
+            if(OPENVK_ROOT_CONF['openvk']['preferences']['security']['forceStrongPassword'])
                 if(!Validator::i()->passwordStrong($this->postParam("password")))
                     $this->flashFail("err", tr("error"), tr("error_weak_password"));
-            
+
             if (strtotime($this->postParam("birthday")) > time())
                 $this->flashFail("err", tr("invalid_birth_date"), tr("invalid_birth_date_comment"));
-			
-			if (!$this->postParam("confirmation"))
+
+            if (!$this->postParam("confirmation"))
                 $this->flashFail("err", tr("error"), tr("checkbox_in_registration_unchecked"));
 
             try {
@@ -111,33 +111,10 @@ final class AuthPresenter extends OpenVKPresenter
 
             $user->setUser($chUser->getId());
             $user->save(false);
-			
-			$f1 = new FriendsList;
-            $f1->setOwner($user->getId());
-            $f1->setName("[internal friendslist]");
-            $f1->setSpecial_type(16);
-            $f1->setColor("E5EED9");
-            $f1->save();
-
-            $f2 = new FriendsList;
-            $f2->setOwner($user->getId());
-            $f2->setName("[internal friendslist]");
-            $f2->setSpecial_type(32);
-            $f2->setColor("F5E9E2");
-            $f2->save();
-
-            $f3 = new FriendsList;
-            $f3->setOwner($user->getId());
-            $f3->setName("[internal friendslist]");
-            $f3->setSpecial_type(64);
-            $f3->setColor("F5E9E2");
-            $f3->save();
             
             if(!is_null($referer)) {
                 $user->toggleSubscription($referer);
                 $referer->toggleSubscription($user);
-				
-				$f1->addFriend($referer);
             }
 
             if (OPENVK_ROOT_CONF['openvk']['preferences']['security']['requireEmail']) {
@@ -231,13 +208,17 @@ final class AuthPresenter extends OpenVKPresenter
     
     function renderFinishRestoringPassword(): void
     {
+        if(OPENVK_ROOT_CONF['openvk']['preferences']['security']['disablePasswordRestoring'])
+            $this->notFound();
+
         $request = $this->restores->getByToken(str_replace(" ", "+", $this->queryParam("key")));
         if(!$request || !$request->isStillValid()) {
             $this->flash("err", tr("token_manipulation_error"), tr("token_manipulation_error_comment"));
             $this->redirect("/");
             return;
         }
-
+        
+        $this->template->disable_ajax = 1;
         $this->template->is2faEnabled = $request->getUser()->is2faEnabled();
         
         if($_SERVER["REQUEST_METHOD"] === "POST") {
@@ -265,6 +246,9 @@ final class AuthPresenter extends OpenVKPresenter
     
     function renderRestore(): void
     {
+        if(OPENVK_ROOT_CONF['openvk']['preferences']['security']['disablePasswordRestoring'])
+            $this->notFound();
+
         if(!is_null($this->user))
             $this->redirect($this->user->identity->getURL());
 
@@ -353,8 +337,8 @@ final class AuthPresenter extends OpenVKPresenter
 
         $this->redirect("/");
     }
-	
-	function renderUnbanThemself(): void
+
+    function renderUnbanThemself(): void
     {
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
@@ -363,14 +347,21 @@ final class AuthPresenter extends OpenVKPresenter
             $this->flashFail("err", tr("error"), tr("forbidden"));
 
         $user = $this->users->get($this->user->id);
+        $ban = (new Bans)->get((int)$user->getRawBanReason());
+        if (!$ban || $ban->isOver() || $ban->isPermanent())
+            $this->flashFail("err", tr("error"), tr("forbidden"));
+
+        $ban->setRemoved_Manually(2);
+        $ban->setRemoved_By($this->user->identity->getId());
+        $ban->save();
 
         $user->setBlock_Reason(NULL);
-        $user->setUnblock_Time(NULL);
+        // $user->setUnblock_Time(NULL);
         $user->save();
 
         $this->flashFail("succ", tr("banned_unban_title"), tr("banned_unban_description"));
     }
-
+    
     /*
      * This function will revoke all tokens, including API and Web tokens and except active one
      * 

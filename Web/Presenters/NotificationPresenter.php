@@ -3,14 +3,14 @@ namespace openvk\Web\Presenters;
 
 final class NotificationPresenter extends OpenVKPresenter
 {
-	protected $presenterName = "notification";
-	
+    protected $presenterName = "notification";
+
     function renderFeed(): void
     {
         $this->assertUserLoggedIn();
-        
+
         $archive = $this->queryParam("act") === "archived";
-        $count = $this->user->identity->getNotificationsCount($archive);
+        $count   = $this->user->identity->getNotificationsCount($archive);
 
         if($count == 0 && $this->queryParam("act") == NULL) {
             $mode = "archived";

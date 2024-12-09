@@ -6,7 +6,7 @@
         <link rel="icon">
         <title>{$audio->getName()}</title>
         
-        {css "css/main.css"}
+        {css "css/style.css"}
         {css "css/audios.css"}
         {script "js/node_modules/dashjs/dist/dash.all.min.js"}
         {script "js/node_modules/jquery/dist/jquery.min.js"}

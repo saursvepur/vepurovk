@@ -12,7 +12,7 @@
 
     <div class="left_small_block">
         <div>
-            <img src="/assets/packages/static/openvk/img/banned.jpg"
+            <img src="{$thisUser->getAvatarUrl('normal')}"
                 alt="{$thisUser->getCanonicalName()}"
                 style="width: 100%; image-rendering: -webkit-optimize-contrast;" />
         </div>

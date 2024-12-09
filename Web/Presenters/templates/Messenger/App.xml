@@ -1,5 +1,5 @@
 {extends "../@layout.xml"}
-{block title}{_messages}{$correspondent->getCanonicalName()}{/block}
+{block title}{$correspondent->getCanonicalName()}{/block}
 
 {block header}
     

@@ -9,13 +9,13 @@ final class MessengerPresenter extends OpenVKPresenter
 {
     private $messages;
     private $signaler;
-	protected $presenterName = "messenger";
-    
+    protected $presenterName = "messenger";
+
     function __construct(Messages $messages)
     {
         $this->messages = $messages;
         $this->signaler = SignalManager::i();
-		
+
         parent::__construct();
     }
     
@@ -32,17 +32,17 @@ final class MessengerPresenter extends OpenVKPresenter
     function renderIndex(): void
     {
         $this->assertUserLoggedIn();
-        
+
         if(isset($_GET["sel"]))
             $this->pass("openvk!Messenger->app", $_GET["sel"]);
         
         $page = (int) ($_GET["p"] ?? 1);
         $correspondences = iterator_to_array($this->messages->getCorrespondencies($this->user->identity, $page));
-        
-		// #КакаоПрокакалось
-		
+
+        // #КакаоПрокакалось
+
         $this->template->corresps = $correspondences;
-		$this->template->paginatorConf = (object) [
+        $this->template->paginatorConf = (object) [
             "count"   => $this->messages->getCorrespondenciesCount($this->user->identity),
             "page"    => (int) ($_GET["p"] ?? 1),
             "amount"  => sizeof($this->template->corresps),
@@ -57,12 +57,13 @@ final class MessengerPresenter extends OpenVKPresenter
         $correspondent = $this->getCorrespondent($sel);
         if(!$correspondent)
             $this->notFound();
-		
-		if(!$this->user->identity->getPrivacyPermission('messages.write', $correspondent))
+
+        if(!$this->user->identity->getPrivacyPermission('messages.write', $correspondent))
         {
             $this->flash("err", tr("warning"), tr("user_may_not_reply"));
         }
         
+        $this->template->disable_ajax  = 1;
         $this->template->selId         = $sel;
         $this->template->correspondent = $correspondent;
     }
@@ -100,9 +101,9 @@ final class MessengerPresenter extends OpenVKPresenter
         }
         
         $legacy = $this->queryParam("version") < 3;
-		
-		$time = intval($this->queryParam("wait"));
 
+        $time = intval($this->queryParam("wait"));
+        
         if($time > 60)
             $time = 60;
         elseif($time == 0)

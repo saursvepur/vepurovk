@@ -67,3 +67,28 @@ div.ovk-video > div > img
     height: 30px !important;
     object-fit: cover;
 }
+
+.profile_thumb > a > img {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 100px;
+}
+
+.tippy-content > table > tbody > tr > td:nth-child(1) > img{
+    width: 54px;
+    height: 54px;
+    object-fit: cover;
+    border-radius: 100px;
+}
+
+.friendsAudiosList .elem img {
+    width: 30px;
+    border-radius: 100px;
+    height: 31px;
+    min-width: 30px;
+}
+
+.entity_vertical_list .entity_vertical_list_item img {
+    border-radius: 20px;
+}

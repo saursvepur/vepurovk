@@ -3,6 +3,8 @@ namespace openvk\Web\Presenters;
 
 final class BlobPresenter extends OpenVKPresenter
 {
+    protected $banTolerant   = true;
+
     private function getDirName($dir): string
     {
         if(gettype($dir) === "integer") {
@@ -16,7 +18,7 @@ final class BlobPresenter extends OpenVKPresenter
     
     function renderFile(/*string*/ $dir, string $name, string $format)
     {
-		header("Access-Control-Allow-Origin: *");
+        header("Access-Control-Allow-Origin: *");
 
         $dir  = $this->getDirName($dir);
         $base = realpath(OPENVK_ROOT . "/storage/$dir");
@@ -27,15 +29,15 @@ final class BlobPresenter extends OpenVKPresenter
             $this->notFound();
         
         if(isset($_SERVER["HTTP_IF_NONE_MATCH"]))
-                exit(header("HTTP/1.1 304 Not Modified"));
-            
-            header("Content-Type: " . mime_content_type($path));
-            header("Content-Size: " . filesize($path));
-            header("Cache-Control: public, max-age=1210000");
-            header("X-Accel-Expires: 1210000");
-            header("ETag: W/\"" . hash_file("snefru", $path) . "\"");
-            
-            readfile($path);
-            exit;
-    }
+            exit(header("HTTP/1.1 304 Not Modified"));
+        
+        header("Content-Type: " . mime_content_type($path));
+        header("Content-Size: " . filesize($path));
+        header("Cache-Control: public, max-age=1210000");
+        header("X-Accel-Expires: 1210000");
+        header("ETag: W/\"" . hash_file("snefru", $path) . "\"");
+        
+        readfile($path);
+        exit;
+      }
 }

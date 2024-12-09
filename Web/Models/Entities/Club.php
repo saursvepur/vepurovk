@@ -42,19 +42,12 @@ class Club extends RowModel
         return iterator_to_array($avPhotos)[0] ?? NULL;
     }
     
-    function getAvatarUrl(string $size = "miniscule"): string
+    function getAvatarUrl(string $size = "miniscule", $avPhoto = NULL): string
     {
         $serverUrl = ovk_scheme(true) . $_SERVER["HTTP_HOST"];
-        $avPhoto   = $this->getAvatarPhoto();
+        if(!$avPhoto)
+            $avPhoto = $this->getAvatarPhoto();
         
-        if($this->isBanned()) {
-            return "$serverUrl/assets/packages/static/openvk/img/banned.jpg";
-        }
-
-        if($this->isDeleted()) {
-            return "$serverUrl/assets/packages/static/openvk/img/camera_200.png";
-        }
-
         return is_null($avPhoto) ? "$serverUrl/assets/packages/static/openvk/img/camera_200.png" : $avPhoto->getURLBySizeId($size);
     }
 
@@ -116,15 +109,15 @@ class Club extends RowModel
     {
         return $this->getRecord()->about;
     }
-    
-	function getDescriptionHtml(): ?string
+
+    function getDescriptionHtml(): ?string
     {
         if(!is_null($this->getDescription()))
             return nl2br(htmlspecialchars($this->getDescription(), ENT_DISALLOWED | ENT_XHTML));
-		else
+        else
             return NULL;
     }
-	
+    
     function getShortCode(): ?string
     {
         return $this->getRecord()->shortcode;
@@ -155,33 +148,19 @@ class Club extends RowModel
         return (bool) $this->getRecord()->display_topics_above_wall;
     }
 
-    function isHidingFromGlobalFeedEnforced(): bool
-    {
-        return (bool) $this->getRecord()->enforce_hiding_from_global_feed;
-    }
-
     function isHideFromGlobalFeedEnabled(): bool
     {
         return (bool) $this->getRecord()->hide_from_global_feed;
     }
 
-    function isDeleted(): bool
+    function isHidingFromGlobalFeedEnforced(): bool
     {
-        return (bool) $this->getRecord()->deleted;
+        return (bool) $this->getRecord()->enforce_hiding_from_global_feed;
     }
 
     function getType(): int
     {
         return $this->getRecord()->type;
-    }
-
-    function canBeViewedBy(?User $user = NULL)
-    {
-        if($this->isDeleted()) {
-            return false;
-        } else {
-            return true;
-        }
     }
     
     function isVerified(): bool
@@ -191,17 +170,12 @@ class Club extends RowModel
     
     function isBanned(): bool
     {
-        return $this->isDeleted() && $this->hasBlockReason();
-    }
-
-    function hasBlockReason(): bool
-    {
-        return !is_null($this->getBanReason()) && !empty($this->getBanReason());
+        return !is_null($this->getBanReason());
     }
 
     function canPost(): bool
     {
-	return (bool) $this->getRecord()->wall;
+	    return (bool) $this->getRecord()->wall;
     }
 
     
@@ -273,7 +247,7 @@ class Club extends RowModel
                     "shape" => "spline",
                     "color" => "#597da3",
                 ],
-                "name" => $unique ? "Полный охват" : "Все просмотры",
+                "name" => $unique ? tr("full_coverage") : tr("all_views"),
             ],
             "subs"  => [
                 "x" => array_reverse(range(1, 7)),
@@ -284,7 +258,7 @@ class Club extends RowModel
                     "color" => "#b05c91",
                 ],
                 "fill" => "tozeroy",
-                "name" => $unique ? "Охват подписчиков" : "Просмотры подписчиков",
+                "name" => $unique ? tr("subs_coverage") : tr("subs_views"),
             ],
             "viral" => [
                 "x" => array_reverse(range(1, 7)),
@@ -295,7 +269,7 @@ class Club extends RowModel
                     "color" => "#4d9fab",
                 ],
                 "fill" => "tozeroy",
-                "name" => $unique ? "Виральный охват" : "Виральные просмотры",
+                "name" => $unique ? tr("viral_coverage") : tr("viral_views"),
             ],
         ];
     }
@@ -321,7 +295,7 @@ class Club extends RowModel
             return false;
         }
         
-        return $query;
+        return $query->group("follower");
     }
     
     function getFollowersCount(): int
@@ -350,7 +324,7 @@ class Club extends RowModel
 
         if($this->canBeModifiedBy($user))
             $count = (new Posts)->getSuggestedPostsCount($this->getId());
-            else 
+        else
             $count = (new Posts)->getSuggestedPostsCountByUser($this->getId(), $user->getId());
 
         return $count;
@@ -374,8 +348,8 @@ class Club extends RowModel
     {
         $manager = (new Managers)->getByUserAndClub($user->getId(), $this->getId());
 
-        if ($ignoreHidden && $manager !== null && $manager->isHidden())
-            return null;
+        if ($ignoreHidden && $manager !== NULL && $manager->isHidden())
+            return NULL;
 
         return $manager;
     }
@@ -415,50 +389,35 @@ class Club extends RowModel
     }
 
     function getWebsite(): ?string
-	{
-		return $this->getRecord()->website;
-	}
+	  {
+		  return $this->getRecord()->website;
+	  }
+
+    function ban(string $reason): void
+    {
+        $this->setBlock_Reason($reason);
+        $this->save();
+    }
+
+    function unban(): void
+    {
+        $this->setBlock_Reason(null);
+        $this->save();
+    }
+
+    function canBeViewedBy(?User $user = NULL)
+    {
+        return is_null($this->getBanReason());
+    }
 
     function getAlert(): ?string
     {
         return $this->getRecord()->alert;
     }
 
-    function getAudiosCollectionSize()
+    function getRealId(): int
     {
-        return (new \openvk\Web\Models\Repositories\Audios)->getClubCollectionSize($this);
-    }
-	
-	function toVkApiStruct(?User $user = NULL): object
-    {
-        $res = (object) [];
-
-        $res->id          = $this->getId();
-        $res->name        = $this->getName();
-        $res->screen_name = $this->getShortCode();
-        $res->is_closed   = 0;
-        $res->deactivated = NULL;
-        $res->is_admin    = $user && $this->canBeModifiedBy($user);
-
-        if($user && $this->canBeModifiedBy($user)) {
-            $res->admin_level = 3;
-        }
-
-        $res->is_member  = $user && $this->getSubscriptionStatus($user) ? 1 : 0;
-
-        $res->type       = "group";
-        $res->photo_50   = $this->getAvatarUrl("miniscule");
-        $res->photo_100  = $this->getAvatarUrl("tiny");
-        $res->photo_200  = $this->getAvatarUrl("normal");
-
-        $res->can_create_topic = $user && $this->canBeModifiedBy($user) ? 1 : ($this->isEveryoneCanCreateTopics() ? 1 : 0);
-
-        $res->can_post         = $user && $this->canBeModifiedBy($user) ? 1 : ($this->canPost() ? 1 : 0);
-
-        $res->is_deleted = (int)$this->isDeleted();
-        $res->is_banned  = (int)$this->isBanned();
-
-        return $res;
+        return $this->getId() * -1;
     }
 
     function isEveryoneCanUploadAudios(): bool
@@ -474,12 +433,67 @@ class Club extends RowModel
         return $this->isEveryoneCanUploadAudios() || $this->canBeModifiedBy($user);
     }
 
-    function getRealId()
+    function getAudiosCollectionSize()
     {
-        return $this->getId() * -1;
+        return (new \openvk\Web\Models\Repositories\Audios)->getClubCollectionSize($this);
     }
     
-	use Traits\TBackDrops;
+    function toVkApiStruct(?User $user = NULL, string $fields = ''): object
+    {
+        $res = (object) [];
+
+        $res->id          = $this->getId();
+        $res->name        = $this->getName();
+        $res->screen_name = $this->getShortCode() ?? "club".$this->getId();
+        $res->is_closed   = false;
+        $res->type        = 'group';
+        $res->is_member   = $user ? (int)$this->getSubscriptionStatus($user) : 0;
+        $res->deactivated = NULL;
+        $res->can_access_closed = true;
+
+        if(!is_array($fields))
+            $fields = explode(',', $fields);
+        
+        $avatar_photo  = $this->getAvatarPhoto();
+        foreach($fields as $field) {
+            switch($field) {
+                case 'verified':
+                    $res->verified = (int)$this->isVerified();
+                    break;
+                case 'site':
+                    $res->site = $this->getWebsite();
+                    break;
+                case 'description':
+                    $res->description = $this->getDescription();
+                    break;
+                case 'background':
+                    $res->background = $this->getBackDropPictureURLs();
+                    break;
+                case 'photo_50':
+                    $res->photo_50 = $this->getAvatarUrl('miniscule', $avatar_photo);
+                    break;
+                case 'photo_100':
+                    $res->photo_100 = $this->getAvatarUrl('tiny', $avatar_photo);
+                    break;
+                case 'photo_200':
+                    $res->photo_200 = $this->getAvatarUrl('normal', $avatar_photo);
+                    break;
+                case 'photo_max':
+                    $res->photo_max = $this->getAvatarUrl('original', $avatar_photo);
+                    break;
+                case 'members_count':
+                    $res->members_count = $this->getFollowersCount();
+                    break;
+                case 'real_id':
+                    $res->real_id = $this->getRealId();
+                    break;
+            }
+        }
+
+        return $res;
+    }
+
+    use Traits\TBackDrops;
     use Traits\TSubscribable;
     use Traits\TAudioStatuses;
     use Traits\TIgnorable;

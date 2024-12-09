@@ -7,7 +7,7 @@ use Chandler\Security\Authenticator;
 use Latte\Engine as TemplatingEngine;
 use openvk\Web\Models\Entities\IP;
 use openvk\Web\Themes\Themepacks;
-use openvk\Web\Models\Repositories\{CurrentUser, IPs, Users, APITokens, Tickets};
+use openvk\Web\Models\Repositories\{IPs, Users, APITokens, Tickets, Reports, CurrentUser};
 use WhichBrowser;
 
 abstract class OpenVKPresenter extends SimplePresenter
@@ -17,8 +17,8 @@ abstract class OpenVKPresenter extends SimplePresenter
     protected $deactivationTolerant = false;
     protected $errorTemplate = "@error";
     protected $user = NULL;
-	protected $presenterName;
-    
+    protected $presenterName;
+
     private function calculateQueryString(array $data): string
     {
         $rawUrl = "tcp+stratum://fakeurl.net$_SERVER[REQUEST_URI]"; #HTTP_HOST can be tainted
@@ -62,9 +62,7 @@ abstract class OpenVKPresenter extends SimplePresenter
             $this->flash($type, $title, $message, $code);
             $referer = $_SERVER["HTTP_REFERER"] ?? "/";
             
-            header("HTTP/1.1 302 Found");
-            header("Location: $referer");
-            exit;
+            $this->redirect($referer);
         }
     }
     
@@ -100,9 +98,8 @@ abstract class OpenVKPresenter extends SimplePresenter
             }
             
             $this->flash("err", tr("login_required_error"), tr("login_required_error_comment"));
-            header("HTTP/1.1 302 Found");
-            header("Location: $loginUrl");
-            exit;
+            
+            $this->redirect($loginUrl);
         }
     }
     
@@ -112,9 +109,7 @@ abstract class OpenVKPresenter extends SimplePresenter
             if($model !== "user") {
                 $this->flash("info", tr("login_required_error"), tr("login_required_error_comment"));
                 
-                header("HTTP/1.1 302 Found");
-                header("Location: /login");
-                exit;
+                $this->redirect("/login");
             }
             
             return ($action === "register" || $action === "login");
@@ -206,11 +201,12 @@ abstract class OpenVKPresenter extends SimplePresenter
         if(!$this->template)
             $this->template = new \stdClass;
         
-        $this->template->isXmas = intval(date('d')) >= 1 && date('m') == 12 || intval(date('d')) <= 13 && date('m') == 1 ? true : false;
+        $this->template->isXmas = intval(date('d')) >= 1 && date('m') == 12 || intval(date('d')) <= 15 && date('m') == 1 ? true : false;
         $this->template->isTimezoned = Session::i()->get("_timezoneOffset");
-        
+
         $userValidated = 0;
         $cacheTime     = OPENVK_ROOT_CONF["openvk"]["preferences"]["nginxCacheTime"] ?? 0;
+
         if(!is_null($user)) {
             $this->user = (object) [];
             $this->user->raw             = $user;
@@ -232,11 +228,11 @@ abstract class OpenVKPresenter extends SimplePresenter
                     Authenticator::i()->logout();
                     Session::i()->set("_su", NULL);
                     $this->flashFail("err", tr("error"), tr("profile_not_found"));
-                    $this->redirect("/", static::REDIRECT_TEMPORARY);
+                    $this->redirect("/");
                 }
                 exit;
             }
-            
+
             if($this->user->identity->isBanned() && !$this->banTolerant) {
                 header("HTTP/1.1 403 Forbidden");
                 $this->getTemplatingEngine()->render(__DIR__ . "/templates/@banned.xml", [
@@ -257,26 +253,27 @@ abstract class OpenVKPresenter extends SimplePresenter
                 ]);
                 exit;
             }
-            
+
             $userValidated = 1;
             $cacheTime     = 0; # Force no cache
-            if($this->user->identity->onlineStatus() == 0 && !($this->user->identity->isDeleted() || $this->user->identity->isBanned())) {
+            if(!property_exists($this, 'silent') && $this->user->identity->onlineStatus() == 0 && !($this->user->identity->isDeleted() || $this->user->identity->isBanned())) {
                 $this->user->identity->setOnline(time());
-				$this->user->identity->setClient_name(NULL);
-                $this->user->identity->save();
+                $this->user->identity->setClient_name(NULL);
                 $this->user->identity->save(false);
             }
-            
+
             $this->template->ticketAnsweredCount = (new Tickets)->getTicketsCountByUserId($this->user->id, 1);
-            if($user->can("write")->model("openvk\Web\Models\Entities\TicketReply")->whichBelongsTo(0))
+            if($user->can("write")->model("openvk\Web\Models\Entities\TicketReply")->whichBelongsTo(0)) {
                 $this->template->helpdeskTicketNotAnsweredCount = (new Tickets)->getTicketCount(0);
+                $this->template->reportNotAnsweredCount = (new Reports)->getReportsCount(0);
+            }
         }
-        
+
         header("X-Accel-Expires: $cacheTime");
         setlocale(LC_TIME, ...(explode(";", tr("__locale"))));
-        
-		if (!OPENVK_ROOT_CONF["openvk"]["preferences"]["maintenanceMode"]["all"]) {
-            if (OPENVK_ROOT_CONF["openvk"]["preferences"]["maintenanceMode"][$this->presenterName]) {
+
+        if (!OPENVK_ROOT_CONF["openvk"]["preferences"]["maintenanceMode"]["all"]) {
+            if ($this->presenterName && OPENVK_ROOT_CONF["openvk"]["preferences"]["maintenanceMode"][$this->presenterName]) {
                 $this->pass("openvk!Maintenance->section", $this->presenterName);
             }
         } else {
@@ -284,7 +281,12 @@ abstract class OpenVKPresenter extends SimplePresenter
                 $this->redirect("/maintenances/");
             }
         }
-		
+
+        if($_SERVER['HTTP_X_OPENVK_AJAX_QUERY'] == '1' && $this->user->identity) {
+            error_reporting(0);
+            header('Content-Type: text/plain; charset=UTF-8');
+        }
+
         parent::onStartup();
     }
     
@@ -293,10 +295,14 @@ abstract class OpenVKPresenter extends SimplePresenter
         parent::onBeforeRender();
         
         $whichbrowser = new WhichBrowser\Parser(getallheaders());
+        $featurephonetheme = OPENVK_ROOT_CONF["openvk"]["preferences"]["defaultFeaturePhoneTheme"];
         $mobiletheme = OPENVK_ROOT_CONF["openvk"]["preferences"]["defaultMobileTheme"];
-        if($mobiletheme && $whichbrowser->isType('mobile') && Session::i()->get("_tempTheme") == NULL)
+        
+        if($featurephonetheme && $this->isOldThing($whichbrowser) && Session::i()->get("_tempTheme") == NULL) {
+            $this->setSessionTheme($featurephonetheme);
+        } elseif($mobiletheme && $whichbrowser->isType('mobile') && Session::i()->get("_tempTheme") == NULL)
             $this->setSessionTheme($mobiletheme);
-
+    
         $theme = NULL;
         if(Session::i()->get("_tempTheme")) {
             $theme = Themepacks::i()[Session::i()->get("_tempTheme", "ovk")];
@@ -305,7 +311,7 @@ abstract class OpenVKPresenter extends SimplePresenter
             $theme = Themepacks::i()[Session::i()->get("_sessionTheme", "ovk")];
         } else if($this->requestParam("themePreview")) {
             $theme = Themepacks::i()[$this->requestParam("themePreview")];
-        } else if($this->user->identity !== NULL && $this->user->identity->getTheme()) {
+        } else if($this->user !== NULL && $this->user->identity !== NULL && $this->user->identity->getTheme()) {
             $theme = $this->user->identity->getTheme();
         }
         
@@ -326,5 +332,34 @@ abstract class OpenVKPresenter extends SimplePresenter
         header("Content-Type: application/json");
         header("Content-Length: $size");
         exit($payload);
+    }
+
+    protected function isOldThing($whichbrowser) {
+        if($whichbrowser->isOs('Series60') || 
+           $whichbrowser->isOs('Series40') || 
+           $whichbrowser->isOs('Series80') || 
+           $whichbrowser->isOs('Windows CE') || 
+           $whichbrowser->isOs('Windows Mobile') || 
+           $whichbrowser->isOs('Nokia Asha Platform') || 
+           $whichbrowser->isOs('UIQ') || 
+           $whichbrowser->isEngine('NetFront') || // PSP and other japanese portable systems
+           $whichbrowser->isOs('Android') || 
+           $whichbrowser->isOs('iOS') ||
+           $whichbrowser->isBrowser('Internet Explorer', '<=', '8')) {
+            // yeah, it's old, but ios and android are?
+            if($whichbrowser->isOs('iOS') && $whichbrowser->isOs('iOS', '<=', '9'))
+                return true;
+            elseif($whichbrowser->isOs('iOS') && $whichbrowser->isOs('iOS', '>', '9'))
+                return false;
+            
+            if($whichbrowser->isOs('Android') && $whichbrowser->isOs('Android', '<=', '5'))
+                return true;
+            elseif($whichbrowser->isOs('Android') && $whichbrowser->isOs('Android', '>', '5'))
+                return false;
+
+            return true;
+        } else {
+            return false;
+        }
     }
 } 

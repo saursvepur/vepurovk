@@ -55,8 +55,8 @@ class Post extends Postable
     {
         return $this->getRecord()->wall;
     }
-	
-	function getWallOwner()
+
+    function getWallOwner()
     {
         $w = $this->getRecord()->wall;
         if($w < 0)
@@ -79,29 +79,43 @@ class Post extends Postable
         return (bool) $this->getRecord()->pinned;
     }
 
+    function hasSource(): bool
+    {
+        return $this->getRecord()->source != NULL;
+    }
+
     function getSource(bool $format = false)
     {
-        if(!$format) {
-            return $this->getRecord()->source;
-        }
+        $orig_source = $this->getRecord()->source;
+        if(!str_contains($orig_source, "https://") && !str_contains($orig_source, "http://"))
+            $orig_source = "https://" . $orig_source;
 
-        return $this->formatLinks($this->getRecord()->source);
+        if(!$format)
+            return $orig_source;
+        
+        return $this->formatLinks($orig_source);
     }
 
     function setSource(string $source)
     {
-        $src = $source;
+        $result = check_copyright_link($source);
 
-        if(iconv_strlen($source) > 50) 
-            throw new \LengthException("Link is too long.");
+        $this->stateChanges("source", $source);
+    }
 
-        if(!preg_match("/^(http:\/\/|https:\/\/)*[а-яА-ЯёЁa-z0-9\-_]+(\.[а-яА-ЯёЁa-z0-9\-_]+)+(\/\S*)*$/iu", $source))
-            throw new \LogicException("Invalid link");
+    function resetSource()
+    {
+        $this->stateChanges("source", NULL);
+    }
 
-        if(!str_contains($source, "https://") && !str_contains($source, "http://"))
-            $src = "https://" . $source;
-
-        $this->stateChanges("source", $src);
+    function getVkApiCopyright(): object
+    {
+        return (object)[
+            'id'   => 0,
+            'link' => $this->getSource(false),
+            'name' => $this->getSource(false),
+            'type' => 'link',
+        ];
     }
     
     function isAd(): bool
@@ -118,17 +132,17 @@ class Post extends Postable
     {
         return ($this->getRecord()->flags & 0b01000000) > 0;
     }
-    
-	function isDeactivationMessage(): bool
+
+    function isDeactivationMessage(): bool
     {
-        return ($this->getRecord()->flags & 0b00100000) > 0;
+        return (($this->getRecord()->flags & 0b00100000) > 0) && ($this->getRecord()->owner > 0);
     }
-	
-	function isUpdateAvatarMessage(): bool
+    
+    function isUpdateAvatarMessage(): bool
     {
         return (($this->getRecord()->flags & 0b00010000) > 0) && ($this->getRecord()->owner > 0);
     }
-	
+
     function isExplicit(): bool
     {
         return (bool) $this->getRecord()->nsfw;
@@ -143,8 +157,8 @@ class Post extends Postable
     {
         return $this->getOwner(false)->getId();
     }
-	
-	function getPlatform(bool $forAPI = false): ?string
+
+    function getPlatform(bool $forAPI = false): ?string
     {
         $platform = $this->getRecord()->api_source_name;
         if($forAPI) {
@@ -161,8 +175,8 @@ class Post extends Postable
 
                 case 'windows_phone':
                     return 'wphone';
-                    break;    
-
+                    break;
+                
                 case 'vika_touch': // кика хохотач ахахахаххахахахахах
                 case 'vk4me':
                     return 'mobile';
@@ -171,7 +185,7 @@ class Post extends Postable
                 case NULL:
                     return NULL;
                     break;
-
+                
                 default:
                     return 'api';
                     break;
@@ -204,6 +218,31 @@ class Post extends Postable
             "img"  => NULL
         ];
     }
+
+    function getPostSourceInfo(): array
+    {
+        $post_source = ["type" => "vk"];
+        if($this->getPlatform(true) !== NULL) {
+            $post_source = [
+                "type" => "api",
+                "platform" => $this->getPlatform(true)
+            ];
+        }
+
+        if($this->isUpdateAvatarMessage())
+            $post_source['data'] = 'profile_photo';
+        
+        return $post_source;
+    }
+
+    function getVkApiType(): string
+    {
+        $type = 'post';
+        if($this->getSuggestionType() != 0)
+            $type = 'suggest';
+
+        return $type;
+    }
     
     function pin(): void
     {
@@ -226,16 +265,22 @@ class Post extends Postable
         $this->save();
     }
     
-    function canBePinnedBy(User $user): bool
+    function canBePinnedBy(User $user = NULL): bool
     {
+        if(!$user)
+            return false;
+
         if($this->getTargetWall() < 0)
             return (new Clubs)->get(abs($this->getTargetWall()))->canBeModifiedBy($user);
         
         return $this->getTargetWall() === $user->getId();
     }
     
-    function canBeDeletedBy(User $user): bool
+    function canBeDeletedBy(User $user = NULL): bool
     {
+        if(!$user)
+            return false;
+        
         if($this->getTargetWall() < 0 && !$this->getWallOwner()->canBeModifiedBy($user) && $this->getWallOwner()->getWallType() != 1 && $this->getSuggestionType() == 0)
             return false;
         
@@ -278,25 +323,29 @@ class Post extends Postable
         $this->save();
     }
 
-    function getSuggestionType()
-    {
-        return $this->getRecord()->suggested;
-    }
-
     function canBeViewedBy(?User $user = NULL): bool
     {
         if($this->isDeleted()) {
             return false;
         }
-
-        # родительский контроль в vepurovk
+        
         return $this->getWallOwner()->canBeViewedBy($user);
     }
+    
+    function getSuggestionType()
+    {
+        return $this->getRecord()->suggested;
+    }
 
+    function getPageURL(): string
+    {
+        return "/wall".$this->getPrettyId();
+    }
+  
     function toNotifApiStruct()
     {
         $res = (object)[];
-
+        
         $res->id      = $this->getVirtualId();
         $res->to_id   = $this->getOwner() instanceof Club ? $this->getOwner()->getId() * -1 : $this->getOwner()->getId();
         $res->from_id = $res->to_id;
@@ -309,7 +358,7 @@ class Post extends Postable
 
         return $res;
     }
-
+    
     function canBeEditedBy(?User $user = NULL): bool
     {
         if(!$user)
@@ -317,7 +366,7 @@ class Post extends Postable
 
         if($this->isDeactivationMessage() || $this->isUpdateAvatarMessage())
             return false;
-        
+
         if($this->getTargetWall() > 0)
             return $this->getPublicationTime()->timestamp() + WEEK > time() && $user->getId() == $this->getOwner(false)->getId();
         else {
@@ -330,21 +379,81 @@ class Post extends Postable
         return $user->getId() == $this->getOwner(false)->getId();
     }
 
-    function getGeo(): ?object
+    function toRss(): \Bhaktaraz\RSSGenerator\Item
     {
-        if (!$this->getRecord()->geo) return NULL;
+        $domain = ovk_scheme(true).$_SERVER["HTTP_HOST"];
+        $description = $this->getText(false);
+        $title = str_replace("\n", "", ovk_proc_strtr($description, 79));
+        $description_html = $description;
+        $url = $domain."/wall".$this->getPrettyId();
 
-        return (object) json_decode($this->getRecord()->geo, true, JSON_UNESCAPED_UNICODE);
-    }
+        if($this->isUpdateAvatarMessage())
+            $title = tr('upd_in_general');
+        if($this->isDeactivationMessage())
+            $title = tr('post_deact_in_general');
 
-    function getLat(): ?float
-    {
-        return (float) $this->getRecord()->geo_lat ?? NULL;
-    }
+        $author = $this->getOwner();
+        $target_wall = $this->getWallOwner();
+        $author_name = escape_html($author->getCanonicalName());
+        if($this->isExplicit())
+            $title = 'NSFW: ' . $title;
 
-    function getLon(): ?float
-    {
-        return (float) $this->getRecord()->geo_lon ?? NULL;
+        foreach($this->getChildren() as $child) {
+            if($child instanceof Photo) {
+                $child_page = $domain.$child->getPageURL();
+                $child_url = $child->getURL();
+                $description_html .= "<br /><a href='$child_page'><img src='$child_url'></a><br />";
+            } elseif($child instanceof Video) {
+                $child_page = $domain.'/video'.$child->getPrettyId();
+
+                if($child->getType() != 1) {
+                    $description_html .= "".
+                    "<br />".
+                    "<video width=\"320\" height=\"240\" controls><source src=\"".$child->getURL()."\" type=\"video/mp4\"></video><br />".
+                    "<b>".escape_html($child->getName())."</b><br />";
+                } else {
+                    $description_html .= "".
+                    "<br />".
+                    "<a href=\"".$child->getVideoDriver()->getURL()."\"><b>".escape_html($child->getName())."</b></a><br />";
+                }
+            } elseif($child instanceof Audio) {
+                if(!$child->isWithdrawn()) {
+                    $description_html .= "<br />"
+                    ."<b>".escape_html($child->getName())."</b>:"
+                    ."<br />"
+                    ."<audio controls>"
+                    ."<source src=\"".$child->getOriginalURL()."\" type=\"audio/mpeg\"></audio>"
+                    ."<br />";
+                }
+            } elseif($child instanceof Poll) {
+                $description_html .= "<br />".tr('poll').": ".escape_html($child->getTitle());
+            } elseif($child instanceof Note) {
+                $description_html .= "<br />".tr('note').": ".escape_html($child->getName());
+            }
+        }
+
+        $description_html .= "<br />".tr('author').": <img width='15px' src='".$author->getAvatarURL()."'><a href='".$author->getURL()."'>" . $author_name . "</a>"; 
+        
+        if($target_wall->getRealId() != $author->getRealId())
+            $description_html .= "<br />".tr('on_wall').": <img width='15px' src='".$target_wall->getAvatarURL()."'><a href='".$target_wall->getURL()."'>" . escape_html($target_wall->getCanonicalName()) . "</a>"; 
+       
+        if($this->isSigned()) {
+            $signer = $this->getOwner(false);
+            $description_html .= "<br />".tr('sign_short').": <img width='15px' src='".$signer->getAvatarURL()."'><a href='".$signer->getURL()."'>" . escape_html($signer->getCanonicalName()) . "</a>"; 
+        }
+
+        if($this->hasSource())
+            $description_html .= "<br />".tr('source').": ".escape_html($this->getSource());
+
+        $item = new \Bhaktaraz\RSSGenerator\Item();
+        $item->title($title)
+        ->url($url)
+        ->guid($url)
+        ->creator($author_name)
+        ->pubDate($this->getPublicationTime()->timestamp())
+        ->content(str_replace("\n", "<br />", $description_html));
+
+        return $item;
     }
     
     use Traits\TRichText;

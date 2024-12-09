@@ -51,7 +51,7 @@ trait TSubscribable
         $sub  = $ctx->table("subscriptions")->where($data);
 
         bdump($data);
-
+        
         if (!$sub) 
             return false;
 

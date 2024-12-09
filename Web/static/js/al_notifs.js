@@ -15,7 +15,7 @@ async function setupNotificationListener() {
             notif = await API.Notifications.fetch();
         } catch(rejection) {
             if(rejection.message !== "Nothing to report") {
-                break;
+                return;
             }
             
             console.info("No new notifications discovered... Redialing event broker");

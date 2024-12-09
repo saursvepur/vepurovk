@@ -110,6 +110,6 @@ class IP extends RowModel
         if(is_null($this->getRecord()))
             $this->stateChanges("first_seen", time());
         
-            parent::save($log);
+        parent::save($log);
     }
 }

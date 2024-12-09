@@ -42,44 +42,50 @@ class Clubs
     {
         return $this->toClub($this->clubs->get($id));
     }
-    
-    function find(string $query, array $pars = [], string $sort = "id DESC"): \Traversable
+
+    function getByIds(array $ids = []): array
     {
-        $query  = "%$query%";
-        $result = $this->clubs->where("name LIKE ? OR about LIKE ?", $query, $query)->order("$sort");
+        $clubs = $this->clubs->select('*')->where('id IN (?)', $ids);
+        $clubs_array = [];
 
-        $notNullParams = [];
-        $nnparamsCount = 0;
-
-        foreach($pars as $paramName => $paramValue)
-            if($paramName != "doNotShowDeleted")
-                $paramValue != NULL ? $notNullParams += ["$paramName" => "%$paramValue%"] : NULL;
-            else
-                $paramValue != NULL ? $notNullParams += ["$paramName" => "$paramValue"]   : NULL;
-
-        $nnparamsCount = sizeof($notNullParams);
-
-        if($nnparamsCount > 0) {
-            foreach($notNullParams as $paramName => $paramValue) {
-                switch($paramName) {
-                    case "doNotShowDeleted":
-                        $result->where("deleted", 0);
-                        break;
-                }
-            }
+        foreach($clubs as $club) {
+            $clubs_array[] =  $this->toClub($club);
         }
-        
-        return new Util\EntityStream("Club", $result->order($sort));
+
+        return $clubs_array;
+    }
+
+    function find(string $query, array $params = [], array $order = ['type' => 'id', 'invert' => false], int $page = 1, ?int $perPage = NULL): \Traversable
+    {
+        $query = "%$query%";
+        $result = $this->clubs;
+        $order_str = 'id';
+
+        switch($order['type']) {
+            case 'id':
+                $order_str = 'id ' . ($order['invert'] ? 'ASC' : 'DESC');
+                break;
+        }
+
+        $result = $result->where("name LIKE ? OR about LIKE ?", $query, $query);
+
+        if($order_str)
+            $result->order($order_str);
+
+        return new Util\EntityStream("Club", $result);
     }
 
     function getCount(): int
     {
-        return sizeof(clone $this->clubs);
+        return (clone $this->clubs)->count('*');
     }
 
     function getPopularClubs(): \Traversable
     {
-        $query   = "SELECT ROW_NUMBER() OVER (ORDER BY `subscriptions` DESC) as `place`, `target` as `id`, COUNT(`follower`) as `subscriptions` FROM `subscriptions` WHERE `model` = \"openvk\\\Web\\\Models\\\Entities\\\Club\" GROUP BY `target` ORDER BY `subscriptions` DESC, `id` LIMIT 20;";
+        // TODO rewrite
+        
+        /*
+        $query   = "SELECT ROW_NUMBER() OVER (ORDER BY `subscriptions` DESC) as `place`, `target` as `id`, COUNT(`follower`) as `subscriptions` FROM `subscriptions` WHERE `model` = \"openvk\\\Web\\\Models\\\Entities\\\Club\" GROUP BY `target` ORDER BY `subscriptions` DESC, `id` LIMIT 30;";
         $entries = DatabaseConnection::i()->getConnection()->query($query);
 
         foreach($entries as $entry)
@@ -88,11 +94,12 @@ class Clubs
                 "club"          => $this->get($entry["id"]),
                 "subscriptions" => $entry["subscriptions"],
             ];
+        */
     }
-
+	
     function getWriteableClubs(int $id): \Traversable
     {
-        $result    = $this->clubs->where("owner", $id)->where("deleted", 0);
+        $result    = $this->clubs->where("owner", $id);
         $coadmins  = $this->coadmins->where("user", $id);
         
         foreach($result as $entry) {
@@ -107,8 +114,8 @@ class Clubs
 
     function getWriteableClubsCount(int $id): int
     {
-        return sizeof($this->clubs->where("owner", $id)->where("deleted", 0)) + sizeof($this->coadmins->where("user", $id));
+        return sizeof($this->clubs->where("owner", $id)) + sizeof($this->coadmins->where("user", $id));
     }
-    
+
     use \Nette\SmartObject;
 }

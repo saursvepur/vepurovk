@@ -28,6 +28,11 @@ class Comment extends Post
         return $entity;
     }
 
+    function getPageURL(): string
+    {
+        return '#';
+    }
+
     /**
      * May return fake owner (group), if flags are [1, (*)]
      * 
@@ -46,15 +51,18 @@ class Comment extends Post
         return parent::getOwner($honourFlags, $real);
     }
 
-    function canBeDeletedBy(User $user): bool
+    function canBeDeletedBy(User $user = NULL): bool
     {
+        if(!$user)
+            return false;
+
         return $this->getOwner()->getId() == $user->getId() ||
                $this->getTarget()->getOwner()->getId() == $user->getId() ||
                $this->getTarget() instanceof Post && $this->getTarget()->getTargetWall() < 0 && (new Clubs)->get(abs($this->getTarget()->getTargetWall()))->canBeModifiedBy($user) ||
                $this->getTarget() instanceof Topic && $this->getTarget()->canBeModifiedBy($user);
     }
-	
-	function toVkApiStruct(?User $user = NULL, bool $need_likes = false, bool $extended = false, ?Note $note = NULL): object
+
+    function toVkApiStruct(?User $user = NULL, bool $need_likes = false, bool $extended = false, ?Note $note = NULL): object
     {
         $res = (object) [];
 
@@ -64,7 +72,7 @@ class Comment extends Post
         $res->text          = $this->getText(false);
         $res->attachments   = [];
         $res->parents_stack = [];
-
+        
         if(!is_null($note)) {
             $res->uid       = $this->getOwner()->getId();
             $res->nid       = $note->getId();
@@ -74,7 +82,7 @@ class Comment extends Post
         foreach($this->getChildren() as $attachment) {
             if($attachment->isDeleted())
                 continue;
-
+            
             if($attachment instanceof \openvk\Web\Models\Entities\Photo) {
                 $res->attachments[] = $attachment->toVkApiStruct();
             } else if($attachment instanceof \openvk\Web\Models\Entities\Video) {
@@ -90,9 +98,13 @@ class Comment extends Post
         return $res;
     }
 
+    function getURL(): string
+    {
+        return "/wall" . $this->getTarget()->getPrettyId() . "#_comment" . $this->getId();
+    }
+
     function canBeViewedBy(?User $user = NULL): bool
     {
-        # по понятным причинам не проверяем удалённость овнера
         if($this->isDeleted() || $this->getTarget()->isDeleted()) {
             return false;
         }
@@ -100,15 +112,26 @@ class Comment extends Post
         return $this->getTarget()->canBeViewedBy($user);
     }
 
-    function getURL(): string
+    function isFromPostAuthor($target = NULL)
     {
-        return "/wall" . $this->getTarget()->getPrettyId() . "#_comment" . $this->getId();
-    }
+        if(!$target)
+            $target = $this->getTarget();
 
+        $target_owner = $target->getOwner();
+        $comment_owner = $this->getOwner();
+        
+        if($target_owner->getRealId() === $comment_owner->getRealId())
+            return true;
+
+        # TODO: make it work with signer_id
+
+        return false;
+    }
+  
     function toNotifApiStruct()
     {
         $res = (object)[];
-
+        
         $res->id       = $this->getId();
         $res->owner_id = $this->getOwner()->getId();
         $res->date     = $this->getPublicationTime()->timestamp();
@@ -117,12 +140,39 @@ class Comment extends Post
 
         return $res;
     }
-
+  
     function canBeEditedBy(?User $user = NULL): bool
     {
         if(!$user)
             return false;
-
+        
         return $user->getId() == $this->getOwner(false)->getId();
+    }
+
+    function getTargetURL(): string
+    {
+        $target = $this->getTarget();
+        $target_name = 'wall';
+
+        if(!$target) {
+            return '/404';
+        }
+
+        switch(get_class($target)) {
+            case 'openvk\Web\Models\Entities\Note':
+                $target_name = 'note';
+                break;
+            case 'openvk\Web\Models\Entities\Photo':
+                $target_name = 'photo';
+                break;
+            case 'openvk\Web\Models\Entities\Video':
+                $target_name = 'video';
+                break;
+            case 'openvk\Web\Models\Entities\Topic':
+                $target_name = 'topic';
+                break;
+        }
+
+        return $target_name . $target->getPrettyId();
     }
 }

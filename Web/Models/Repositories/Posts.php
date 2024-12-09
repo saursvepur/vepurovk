@@ -53,7 +53,7 @@ class Posts
                     $offset--;
                 }
             }
-        } else if(!is_null($offset)) {
+        } else if(!is_null($offset) && $pinPost) {
             $offset--;
         }
         
@@ -78,14 +78,14 @@ class Posts
             "deleted"   => false,
             "suggested" => 0,
         ]);
-
+        
         if($user > 0)
             $sel->where("owner", $user);
         else
             $sel->where("flags !=", 0);
 
         $sel->order("created DESC")->limit($perPage, $offset);
-
+        
         foreach($sel as $post)
             yield new Post($post);
     }
@@ -100,14 +100,14 @@ class Posts
             "deleted"   => false,
             "suggested" => 0,
         ]);
-
+        
         if($user > 0)
             $sel->where("owner !=", $user);
         else
             $sel->where("flags", 0);
-
+        
         $sel->order("created DESC")->limit($perPage, $offset);
-
+        
         foreach($sel as $post)
             yield new Post($post);
     }
@@ -150,10 +150,51 @@ class Posts
         if(!is_null($post))
             return new Post($post);
         else
-            return null;
+            return NULL;
         
     }
-    
+
+    function find(string $query = "", array $params = [], array $order = ['type' => 'id', 'invert' => false]): Util\EntityStream
+    {
+        $query = "%$query%";
+        $result = $this->posts->where("content LIKE ?", $query)->where("deleted", 0)->where("suggested", 0);
+        $order_str = 'id';
+
+        switch($order['type']) {
+            case 'id':
+                $order_str = 'created ' . ($order['invert'] ? 'ASC' : 'DESC');
+                break;
+        }
+
+        foreach($params as $paramName => $paramValue) {
+            if(is_null($paramValue) || $paramValue == '') continue;
+
+            switch($paramName) {
+                case "before":
+                    $result->where("created < ?", $paramValue);
+                    break;
+                case "after":
+                    $result->where("created > ?", $paramValue);
+                    break;
+                /*case 'die_in_agony':
+                    $result->where("nsfw", 1);
+                    break;
+                case 'ads':
+                    $result->where("ad", 1);
+                    break;*/
+                # БУДЬ МАКСИМАЛЬНО АККУРАТЕН С ДАННЫМ ПАРАМЕТРОМ
+                case 'from_me':
+                    $result->where("owner", $paramValue);
+                    break;
+            }
+        }
+
+        if($order_str)
+            $result->order($order_str);
+
+        return new Util\EntityStream("Post", $result);
+    }
+
     function getPostCountOnUserWall(int $user): int
     {
         return sizeof($this->posts->where(["wall" => $user, "deleted" => 0, "suggested" => 0]));
@@ -186,7 +227,7 @@ class Posts
                     ->order("created DESC")
                     ->where("suggested", 1)
                     ->limit($perPage, $offset);
-
+        
         foreach($sel as $post)
             yield new Post($post);
     }
@@ -208,7 +249,7 @@ class Posts
                     ->order("created DESC")
                     ->where("suggested", 1)
                     ->limit($perPage, $offset);
-
+        
         foreach($sel as $post)
             yield new Post($post);
     }
@@ -220,38 +261,6 @@ class Posts
 
     function getCount(): int
     {
-        return sizeof(clone $this->posts);
-    }
-	
-	function find(string $query = "", array $pars = [], string $sort = "id"): Util\EntityStream
-    {
-        $query  = "%$query%";
-
-        $notNullParams = [];
-
-        foreach($pars as $paramName => $paramValue)
-            if($paramName != "before" && $paramName != "after")
-                $paramValue != NULL ? $notNullParams+=["$paramName" => "%$paramValue%"]   : NULL;
-            else
-                $paramValue != NULL ? $notNullParams+=["$paramName" => "$paramValue"]     : NULL;
-
-        $result = $this->posts->where("content LIKE ?", $query)->where("deleted", 0)->where("suggested", 0);
-        $nnparamsCount = sizeof($notNullParams);
-
-        if($nnparamsCount > 0) {
-            foreach($notNullParams as $paramName => $paramValue) {
-                switch($paramName) {
-                    case "before":
-                        $result->where("created < ?", $paramValue);
-                        break;
-                    case "after":
-                        $result->where("created > ?", $paramValue);
-                        break;
-                }
-            }
-        }
-		
-		
-        return new Util\EntityStream("Post", $result->order("$sort"));
+        return (clone $this->posts)->count('*');
     }
 }

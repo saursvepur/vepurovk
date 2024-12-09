@@ -7,8 +7,8 @@ final class TopicsPresenter extends OpenVKPresenter
 {
     private $topics;
     private $clubs;
-	protected $presenterName = "topics";
-    
+    protected $presenterName = "topics";
+
     function __construct(Topics $topics, Clubs $clubs)
     {
         $this->topics = $topics;
@@ -22,7 +22,7 @@ final class TopicsPresenter extends OpenVKPresenter
         $this->assertUserLoggedIn();
 
         $club = $this->clubs->get($id);
-        if(!$club || $club->isDeleted())
+        if(!$club)
             $this->notFound();
 
         $this->template->club = $club;
@@ -51,7 +51,7 @@ final class TopicsPresenter extends OpenVKPresenter
         $this->assertUserLoggedIn();
 
         $topic = $this->topics->getTopicById($clubId, $topicId);
-        if(!$topic || $topic->getClub()->isDeleted())
+        if(!$topic)
             $this->notFound();
 
         $this->template->topic    = $topic;
@@ -66,7 +66,7 @@ final class TopicsPresenter extends OpenVKPresenter
         $this->assertUserLoggedIn();
 
         $club = $this->clubs->get($clubId);
-        if(!$club || $club->isDeleted())
+        if(!$club)
             $this->notFound();
 
         if(!$club->isEveryoneCanCreateTopics() && !$club->canBeModifiedBy($this->user->identity))
@@ -84,6 +84,9 @@ final class TopicsPresenter extends OpenVKPresenter
             if($this->postParam("as_group") === "on" && $club->canBeModifiedBy($this->user->identity))
                 $flags |= 0b10000000;
 
+            if($_FILES["_vid_attachment"] && OPENVK_ROOT_CONF['openvk']['preferences']['videos']['disableUploading'])
+                $this->flashFail("err", tr("error"), "Video uploads are disabled by the system administrator.");
+
             $topic = new Topic;
             $topic->setGroup($club->getId());
             $topic->setOwner($this->user->id);
@@ -92,7 +95,7 @@ final class TopicsPresenter extends OpenVKPresenter
             $topic->setFlags($flags);
             $topic->save();
             
-            // TODO move to trait
+            # TODO move to trait
             try {
                 $photo = NULL;
                 $video = NULL;
@@ -108,8 +111,8 @@ final class TopicsPresenter extends OpenVKPresenter
                     $video = Video::fastMake($this->user->id, $_FILES["_vid_attachment"]["name"], $this->postParam("text"), $_FILES["_vid_attachment"]);
                 }
             } catch(ISE $ex) {
-                $this->flash("err", "Не удалось опубликовать комментарий", "Файл медиаконтента повреждён или слишком велик.");
-                $this->redirect("/topic" . $topic->getPrettyId(), static::REDIRECT_TEMPORARY);
+                $this->flash("err", tr("error_when_publishing_comment"), tr("error_comment_file_too_big"));
+                $this->redirect("/topic" . $topic->getPrettyId());
             }
             
             if(!empty($this->postParam("text")) || $photo || $video) {
@@ -123,8 +126,8 @@ final class TopicsPresenter extends OpenVKPresenter
                     $comment->setFlags($flags);
                     $comment->save();
                 } catch (\LengthException $ex) {
-                    $this->flash("err", "Не удалось опубликовать комментарий", "Комментарий слишком большой.");
-                    $this->redirect("/topic" . $topic->getPrettyId(), static::REDIRECT_TEMPORARY);
+                    $this->flash("err", tr("error_when_publishing_comment"), tr("error_comment_too_big"));
+                    $this->redirect("/topic" . $topic->getPrettyId());
                 }
                 
                 if(!is_null($photo))
@@ -134,7 +137,7 @@ final class TopicsPresenter extends OpenVKPresenter
                     $comment->attach($video);
             }
 
-            $this->redirect("/topic" . $topic->getPrettyId(), static::REDIRECT_TEMPORARY);
+            $this->redirect("/topic" . $topic->getPrettyId());
         }
 
         $this->template->club = $club;
@@ -146,7 +149,7 @@ final class TopicsPresenter extends OpenVKPresenter
         $this->assertUserLoggedIn();
 
         $topic = $this->topics->getTopicById($clubId, $topicId);
-        if(!$topic || $topic->getClub()->isDeleted())
+        if(!$topic)
             $this->notFound();
 
         if(!$topic->canBeModifiedBy($this->user->identity))
@@ -168,7 +171,7 @@ final class TopicsPresenter extends OpenVKPresenter
             $topic->save();
             
             $this->flash("succ", tr("changes_saved"), tr("topic_changes_saved_comment"));
-            $this->redirect("/topic" . $topic->getPrettyId(), static::REDIRECT_TEMPORARY);
+            $this->redirect("/topic" . $topic->getPrettyId());
         }
 
         $this->template->topic = $topic;
@@ -181,7 +184,7 @@ final class TopicsPresenter extends OpenVKPresenter
         $this->assertNoCSRF();
 
         $topic = $this->topics->getTopicById($clubId, $topicId);
-        if(!$topic || $topic->getClub()->isDeleted())
+        if(!$topic)
             $this->notFound();
 
         if(!$topic->canBeModifiedBy($this->user->identity))
@@ -190,6 +193,6 @@ final class TopicsPresenter extends OpenVKPresenter
         $this->willExecuteWriteAction();
         $topic->deleteTopic();
         
-        $this->redirect("/board" . $topic->getClub()->getId(), static::REDIRECT_TEMPORARY);
+        $this->redirect("/board" . $topic->getClub()->getId());
     }
 }

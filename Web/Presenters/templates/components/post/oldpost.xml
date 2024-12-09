@@ -1,13 +1,21 @@
 {var $author = $post->getOwner()}
 {var $platform = $post->getPlatform()}
 {var $platformDetails = $post->getPlatformDetails()}
+{var $wallOwner = $post->getWallOwner()}
+{var $likesCount = $post->getLikesCount()}
+{var $repostsCount = $post->getRepostCount()}
+{var $commentsCount = $post->getCommentsCount()}
+{var $canBePinned = $post->canBePinnedBy($thisUser ?? NULL)}
+{var $canBeDeleted = $post->canBeDeletedBy($thisUser)}
 {if $post->isDeactivationMessage() && $post->getText()}
     {var $deac = "post_deact"}
 {else}
     {var $deac = "post_deact_silent"}
 {/if}
 
-<table border="0" style="font-size: 11px;" n:class="post, $post->isExplicit() ? post-nsfw">
+
+
+<table border="0" style="font-size: 11px;" data-id="{$post->getPrettyId()}" n:class="post, $post->isExplicit() ? post-nsfw">
     <tbody>
         <tr>
             <td width="54" valign="top">
@@ -22,10 +30,10 @@
                     <img n:if="$author->isVerified()" class="name-checkmark" src="/assets/packages/static/openvk/img/checkmark.png">
                     {if $post->isDeactivationMessage()}
                         {$author->isFemale() ? tr($deac . "_f") : tr($deac . "_m")}
-					{elseif $post->isUpdateAvatarMessage() && !$post->isPostedOnBehalfOfGroup()}
+                    {elseif $post->isUpdateAvatarMessage() && !$post->isPostedOnBehalfOfGroup()}
                         {$author->isFemale() ? tr("upd_f") : tr("upd_m")}
                     {elseif $post->isUpdateAvatarMessage() && $post->isPostedOnBehalfOfGroup()}
-                        {tr("upd_g")}	
+                        {tr("upd_g")}
                     {elseif $post->isPostedOnBehalfOfGroup()}
                         {_post_writes_g}
                     {else}
@@ -36,7 +44,6 @@
                         {/if}
                     {/if}
                     {if ($onWallOf ?? false) &&!$post->isPostedOnBehalfOfGroup() && $post->getOwnerPost() !== $post->getTargetWall()}
-                        {var $wallOwner = $post->getWallOwner()}
                         <a href="{$wallOwner->getURL()}" class="mention" data-mention-ref="{$post->getTargetWall()}">
                             <b>
                                 {if isset($thisUser) && $thisUser->getId() === $post->getTargetWall()}
@@ -44,7 +51,7 @@
                                 {elseif $wallOwner instanceof \openvk\Web\Models\Entities\Club}
                                     {tr("post_on_group_wall", ovk_proc_strtr($wallOwner->getName(), 52))}
                                 {else}
-                                    {tr("post_on_user_wall", $wallOwner->getFirstName("genitive", false))}
+                                    {tr("post_on_user_wall", $wallOwner->getMorphedName("genitive", false))}
                                 {/if}
                             </b>
                         </a>
@@ -52,49 +59,44 @@
                     <br/>
                     <a href="{if !$suggestion}/wall{$post->getPrettyId()}{else}javascript:void(0){/if}" class="date">
                         {$post->getPublicationTime()} <span n:if="$post->getEditTime()" class="editedMark">({_edited_short})</span>{if $post->isPinned()}, {_pinned}{/if}
-						<a n:if="!empty($platform)" class="client_app" data-app-tag="{$platform}" data-app-name="{$platformDetails['name']}" data-app-url="{$platformDetails['url']}" data-app-img="{$platformDetails['img']}">
+                        
+                        <a n:if="!empty($platform)" class="client_app" data-app-tag="{$platform}" data-app-name="{$platformDetails['name']}" data-app-url="{$platformDetails['url']}" data-app-img="{$platformDetails['img']}">
                             <img src="/assets/packages/static/openvk/img/app_icons_mini/{$post->getPlatform(this)}.svg">
                         </a>
                     </a>
                 </div>
-                <div class="post-content" id="{$post->getPrettyId()}">
-                    <div class="text">
+                <div class="post-content" id="{$post->getPrettyId()}" data-localized-nsfw-text="{_nsfw_warning}">
+                    <div class="text" id="text{$post->getPrettyId()}">
                         {var $owner = $author->getId()}
 
                         <span data-text="{$post->getText(false)}" class="really_text">{$post->getText()|noescape}</span>
-                        
-                        {var $width = ($GLOBALS["_bigWall"] ?? false) ? 540 : 320}
+
+                        {var $width = ($GLOBALS["_bigWall"] ?? false) ? 550 : 320}
                         {if isset($GLOBALS["_nesAttGloCou"])}
                             {var $width = $width - 70 * $GLOBALS["_nesAttGloCou"]}
                         {/if}
                         {var $attachmentsLayout = $post->getChildrenWithLayout($width)}
                         <div n:ifcontent class="attachments attachments_b" style="height: {$attachmentsLayout->height|noescape}; width: {$attachmentsLayout->width|noescape};">
-                            <div class="attachment" n:foreach="$attachmentsLayout->tiles as $attachment" style="float: {$attachment[3]|noescape}; width: {$attachment[0]|noescape}; height: {$attachment[1]|noescape};" data-localized-nsfw-text="{_nsfw_warning}">
-                                {include "../attachment.xml", attachment => $attachment[2], parent => $post, parentType => "post"}
+                            <div class="attachment" n:foreach="$attachmentsLayout->tiles as $attachment" style="float: {$attachment[3]|noescape}; width: {$attachment[0]|noescape}; height: {$attachment[1]|noescape};">
+                                {include "../attachment.xml", attachment => $attachment[2], parent => $post, parentType => "post", tilesCount => sizeof($attachmentsLayout->tiles)}
                             </div>
                         </div>
-						
-						<div n:ifcontent class="attachments attachments_m">
+
+                        <div n:ifcontent class="attachments attachments_m">
                             <div class="attachment" n:foreach="$attachmentsLayout->extras as $attachment">
                                 {include "../attachment.xml", attachment => $attachment}
                             </div>
                         </div>
                     </div>
-                    <div n:if="$suggestion && $post->canBePinnedBy($thisUser ?? NULL)" class="suggestionControls" style="margin-bottom: 7px;">
+                    <div n:if="$suggestion && $canBePinned" class="suggestionControls" style="margin-bottom: 7px;">
                         <input type="button" class="button" id="publish_post" data-id="{$post->getId()}" value="{_publish_suggested}">
                         <input type="button" class="button" id="decline_post" data-id="{$post->getId()}" value="{_decline_suggested}">
                     </div>
-                    <div n:if="$post->getGeo()" style="padding: 4px;">
-                        <div style="border-bottom: #ECECEC solid 1px;" />
-                        <div style="cursor: pointer; padding: 4px;" onclick="javascript:openGeo({$post->getGeo()}, {$post->getOwner()->getId()}, {$post->getVirtualId()})">
-                            <b>{_geotag}</b>: <a>{$post->getGeo()->name ?? tr("admin_open")}</a>
-                        </div>
-                    </div>
                     <div n:if="$post->isAd()" style="color:grey;">
                         <br/>
-                        &nbsp;! Этот пост был размещён за взятку.
+                        &nbsp;! {_post_is_ad}
                     </div>
-                    <div n:if="!is_null($post->getSource())" class="sourceDiv" style="margin-top:0px;">
+                    <div n:if="$post->hasSource()" class="sourceDiv">
                         <span>{_source}: {$post->getSource(true)|noescape}</span>
                     </div>
                     <div n:if="$post->isSigned()" class="post-signature">
@@ -107,6 +109,7 @@
                         </span>
                     </div>
                 </div>
+                <div class='post-edit' n:if='!$compact'></div>
                 <div n:if="!($compact ?? false)" class="post-menu">
                     {if is_null($thisUser)}
                         {var $forceNoDeleteLink = true}
@@ -115,16 +118,14 @@
 
                     {if !($forceNoEditLink ?? false) && $post->canBeEditedBy($thisUser)}
                         <a id="editPost" 
-                           data-id="{$post->getId()}"
-                           data-nsfw="{(int)$post->isExplicit()}"
-                           {if $post->getTargetWall() < 0 && $post->getWallOwner()->canBeModifiedBy($thisUser)}data-fromgroup="{(int)$post->isPostedOnBehalfOfGroup()}"{/if}>{_edit}</a> &nbsp;|&nbsp;
+                           data-id="{$post->getPrettyId()}">{_edit}</a> &nbsp;|&nbsp;
                     {/if}
 
-                    {if !($forceNoDeleteLink ?? false) && $post->canBeDeletedBy($thisUser)}
+                    {if !($forceNoDeleteLink ?? false) && $canBeDeleted}
                         <a href="/wall{$post->getPrettyId()}/delete">{_delete}</a> &nbsp;|&nbsp;
                     {/if}
                     
-                    {if !($forceNoPinLink ?? false) && $post->canBePinnedBy($thisUser)}
+                    {if !($forceNoPinLink ?? false) && $canBePinned}
                         {if $post->isPinned()}
                             <a href="/wall{$post->getPrettyId()}/pin?act=unpin&hash={rawurlencode($csrfToken)}">{_unpin}</a>
                         {else}
@@ -135,8 +136,8 @@
                     
                     <a n:if="!($forceNoCommentsLink ?? false)" href="/wall{$post->getPrettyId()}#comments">
                         {_comments}
-                        {if $post->getCommentsCount() > 0}
-                            (<b>{$post->getCommentsCount()}</b>)
+                        {if $commentsCount > 0}
+                            (<b>{$commentsCount}</b>)
                         {/if}
                     </a>
 
@@ -144,24 +145,24 @@
                         &nbsp;|&nbsp;
                     {/if}
                     
-                    <a n:if="!($forceNoShareLink ?? false)" id="reposts{$post->getPrettyId()}" class="post-share-button" {ifset $thisUser} href="javascript:repostPost('{$post->getPrettyId()}', '{rawurlencode($csrfToken)}')"{/ifset}>
+                    <a n:if="!($forceNoShareLink ?? false)" id="reposts{$post->getPrettyId()}" class="post-share-button" {ifset $thisUser} href="javascript:repost('{$post->getPrettyId()}', 'post')"{/ifset}>
                         {_share}
-                        {if $post->getRepostCount() > 0}
-                            (<b id="repostsCount{$post->getPrettyId()}">{$post->getRepostCount()}</b>)
+                        {if $repostsCount > 0}
+                            (<b id="repostsCount{$post->getPrettyId()}">{$repostsCount}</b>)
                         {/if}
                     </a>
 
                     <div n:if="!($forceNoLike ?? false)" class="like_wrap">
                         {ifset $thisUser}
                             {var $liked = $post->hasLikeFrom($thisUser)}
-                            <a href="/wall{$post->getPrettyId()}/like?hash={rawurlencode($csrfToken)}" class="post-like-button" data-liked="{(int) $liked}" data-likes="{$post->getLikesCount()}">
+                            <a href="/wall{$post->getPrettyId()}/like?hash={rawurlencode($csrfToken)}" class="post-like-button" data-liked="{(int) $liked}" data-likes="{$likesCount}" data-id="{$post->getPrettyId()}" data-type='post'>
                                 <div class="heart" id="{if $liked}liked{/if}"></div>
-                                <span class="likeCnt">{if $post->getLikesCount() > 0}{$post->getLikesCount()}{/if}</span>
+                                <span class="likeCnt">{if $likesCount > 0}{$likesCount}{/if}</span>
                             </a>
                         {else}
-                            <a n:if="$post->getLikesCount() > 0" class="post-like-button">
+                            <a n:if="$likesCount > 0" class="post-like-button">
                                 <div class="heart"></div>
-                                <span class="likeCnt">{$post->getLikesCount()}</span>
+                                <span class="likeCnt">{$likesCount}</span>
                             </a>
                         {/ifset}
                     </div>

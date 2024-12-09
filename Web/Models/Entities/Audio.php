@@ -120,7 +120,8 @@ class Audio extends Media
                 Shell::powershell("-executionpolicy bypass", "-File", __DIR__ . "/../shell/processAudio.ps1", ...$args)
                 ->start();
             } else {
-                Shell::bash(__DIR__ . "/../shell/processAudio.sh", ...$args)->start();
+                Shell::bash(__DIR__ . "/../shell/processAudio.sh", ...$args) // Pls workkkkk
+                ->start();                                                    // idk, not tested :")
             }
 
             # Wait until processAudio will consume the file
@@ -151,14 +152,19 @@ class Audio extends Media
         return $this->getPerformer() . " — " . $this->getTitle();
     }
 
+    function getDownloadName(): string
+    {
+        return preg_replace('/[\\/:*?"<>|]/', '_', str_replace(' ', '_', $this->getName()));
+    }
+
     function getGenre(): ?string
     {
         return $this->getRecord()->genre;
     }
 
-    function getDownloadName(): string
+    function getPerformers(): array
     {
-        return preg_replace('/[\\/:*?"<>|]/', '_', str_replace(' ', '_', $this->getName()));
+        return explode(", ", $this->getRecord()->performer);
     }
 
     function getLyrics(): ?string
@@ -346,7 +352,34 @@ class Audio extends Media
 
         return false;
     }
-    
+
+    /**
+     * Returns compatible with VK API 4.x, 5.x structure.
+     *
+     * Always sets album(_id) to NULL at this time.
+     * If genre is not present in VK genre list, fallbacks to "Other".
+     * The url and manifest properties will be set to false if the audio can't be played (processing, removed).
+     *
+     * Aside from standard VK properties, this method will also return some OVK extended props:
+     * 1. added - Is in the library of $user?
+     * 2. editable - Can be edited by $user?
+     * 3. withdrawn - Removed due to copyright request?
+     * 4. ready - Can be played at this time?
+     * 5. genre_str - Full name of genre, NULL if it's undefined
+     * 6. manifest - URL to MPEG-DASH manifest
+     * 7. keys - ClearKey DRM keys
+     * 8. explicit - Marked as NSFW?
+     * 9. searchable - Can be found via search?
+     * 10. unique_id - Unique ID of audio
+     *
+     * @notice that in case if exposeOriginalURLs is set to false in config, "url" will always contain link to nomusic.mp3,
+     * unless $forceURLExposure is set to true.
+     *
+     * @notice may trigger db flush if the audio is not processed yet, use with caution on unsaved models.
+     *
+     * @param ?User $user user, relative to whom "added", "editable" will be set
+     * @param bool $forceURLExposure force set "url" regardless of config
+     */
     function toVkApiStruct(?User $user = NULL, bool $forceURLExposure = false): object
     {
         $obj = (object) [];

@@ -80,7 +80,7 @@ abstract class MediaCollection extends RowModel
     }
     
     abstract function getCoverURL(): ?string;
-    
+
     function fetchClassic(int $offset = 0, ?int $limit = NULL): \Traversable
     {
         $related = $this->getRecord()->related("$this->relTableName.collection")
@@ -91,19 +91,19 @@ abstract class MediaCollection extends RowModel
             $media = $rel->ref($this->entityTableName, "media");
             if(!$media)
                 continue;
-            
+
             yield new $this->entityClassName($media);
         }
     }
-    
-	function fetch(int $page = 1, ?int $perPage = NULL): \Traversable
+
+    function fetch(int $page = 1, ?int $perPage = NULL): \Traversable
     {
         $page      = max(1, $page);
         $perPage ??= OPENVK_DEFAULT_PER_PAGE;
 
         return $this->fetchClassic($perPage * ($page - 1), $perPage);
     }
-	
+    
     function size(): int
     {
         return sizeof($this->getRecord()->related("$this->relTableName.collection"));
@@ -131,7 +131,7 @@ abstract class MediaCollection extends RowModel
     {
         return $this->getRecord()->special_type !== 0;
     }
-    
+
     function add(RowModel $entity): bool
     {
         $this->entitySuitable($entity);
@@ -139,11 +139,11 @@ abstract class MediaCollection extends RowModel
         if(!$this->allowDuplicates)
             if($this->has($entity))
                 return false;
-        
-		if(self::MAX_ITEMS != INF)
+
+        if(self::MAX_ITEMS != INF)
             if(sizeof($this->relations->where("collection", $this->getId())) > self::MAX_ITEMS)
                 throw new \OutOfBoundsException("Collection is full");
-		
+        
         $this->relations->insert([
             "collection" => $this->getId(),
             "media"      => $entity->getId(),
@@ -173,8 +173,8 @@ abstract class MediaCollection extends RowModel
         
         return !is_null($rel);
     }
-    
-	function save(?bool $log = false): void
+
+    function save(?bool $log = false): void
     {
         $thisTable = DatabaseConnection::i()->getContext()->table($this->tableName);
         if(self::MAX_COUNT != INF)
@@ -188,7 +188,7 @@ abstract class MediaCollection extends RowModel
         else
             $this->stateChanges("edited", time());
 
-        parent::save();
+        parent::save($log);
     }
 
     function delete(bool $softly = true): void
@@ -200,6 +200,6 @@ abstract class MediaCollection extends RowModel
 
         parent::delete($softly);
     }
-	
+
     use Traits\TOwnable;
 }

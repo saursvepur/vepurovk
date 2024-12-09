@@ -114,7 +114,7 @@ class Photo extends Media
         return true;
     }
     
-    function crop(real $left, real $top, real $width, real $height): void
+    function crop(float $left, float $top, float $width, float $height): void
     {
         if(isset($this->changes["hash"]))
             $hash = $this->changes["hash"];
@@ -283,6 +283,14 @@ class Photo extends Media
         return [$x, $y];
     }
 
+    function getPageURL(): string
+    {
+        if($this->isAnonymous())
+            return "/photos/" . base_convert((string) $this->getId(), 10, 32);
+
+        return "/photo" . $this->getPrettyId();
+    }
+
     function getAlbum(): ?Album
     {
         return (new Albums)->getAlbumByPhotoId($this);
@@ -300,7 +308,7 @@ class Photo extends Media
         $res->date     = $res->created = $this->getPublicationTime()->timestamp();
 
         if($photo_sizes) {
-            $res->sizes        = $this->getVkApiSizes();
+            $res->sizes = array_values($this->getVkApiSizes());
             $res->src_small    = $res->photo_75 = $this->getURLBySizeId("miniscule");
             $res->src          = $res->photo_130 = $this->getURLBySizeId("tiny");
             $res->src_big      = $res->photo_604 = $this->getURLBySizeId("normal");
@@ -319,6 +327,19 @@ class Photo extends Media
         }
 
         return $res;
+    }
+    
+    function canBeViewedBy(?User $user = NULL): bool
+    {
+        if($this->isDeleted() || $this->getOwner()->isDeleted()) {
+            return false;
+        }
+
+        if(!is_null($this->getAlbum())) {
+            return $this->getAlbum()->canBeViewedBy($user);
+        } else {
+            return $this->getOwner()->canBeViewedBy($user);
+        }
     }
 
     static function fastMake(int $owner, string $description = "", array $file, ?Album $album = NULL, bool $anon = false): Photo
@@ -343,7 +364,7 @@ class Photo extends Media
     function toNotifApiStruct()
     {
         $res = (object)[];
-
+        
         $res->id        = $this->getVirtualId();
         $res->owner_id  = $this->getOwner()->getId();
         $res->aid       = 0;
@@ -354,18 +375,5 @@ class Photo extends Media
         $res->created   = $this->getPublicationTime()->timestamp();
 
         return $res;
-    }
-
-    function canBeViewedBy(?User $user = NULL): bool
-    {
-        if($this->isDeleted() || $this->getOwner()->isDeleted()) {
-            return false;
-        }
-
-        if(!is_null($this->getAlbum())) {
-            return $this->getAlbum()->canBeViewedBy($user);
-        } else {
-            return $this->getOwner()->canBeViewedBy($user);
-        }
     }
 }

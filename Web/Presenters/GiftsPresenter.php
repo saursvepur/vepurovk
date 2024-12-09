@@ -7,7 +7,7 @@ final class GiftsPresenter extends OpenVKPresenter
 {
     private $gifts;
     private $users;
-	protected $presenterName = "gifts";
+    protected $presenterName = "gifts";
     
     function __construct(Gifts $gifts, Users $users)
     {
@@ -20,13 +20,12 @@ final class GiftsPresenter extends OpenVKPresenter
         $this->assertUserLoggedIn();
         
         $user = $this->users->get($user);
-        if(!$user || $user->isDeleted() || $user->isServiceAccount())
+        if(!$user || $user->isDeleted())
             $this->notFound();
-
-            if(!$user->canBeViewedBy($this->user->identity ?? NULL)) {
-                $this->flashFail("err", tr("forbidden"), tr("forbidden_comment"));
-            }    
         
+        if(!$user->canBeViewedBy($this->user->identity ?? NULL))
+            $this->flashFail("err", tr("forbidden"), tr("forbidden_comment"));
+
         $this->template->user     = $user;
         $this->template->page     = $page = (int) ($this->queryParam("p") ?? 1);
         $this->template->count    = $user->getGiftCount();
@@ -37,12 +36,8 @@ final class GiftsPresenter extends OpenVKPresenter
     function renderGiftMenu(): void
     {
         $user = $this->users->get((int) ($this->queryParam("user") ?? 0));
-        if(!$user || $user->isDeleted() || $user->isServiceAccount())
+        if(!$user)
             $this->notFound();
-
-            if(!$user->canBeViewedBy($this->user->identity ?? NULL)) {
-                $this->flashFail("err", tr("forbidden"), tr("forbidden_comment"));
-            }       
         
         $this->template->page = $page = (int) ($this->queryParam("p") ?? 1);
         $cats = $this->gifts->getCategories($page, NULL, $this->template->count);
@@ -57,12 +52,11 @@ final class GiftsPresenter extends OpenVKPresenter
     {
         $user = $this->users->get((int) ($this->queryParam("user") ?? 0));
         $cat  = $this->gifts->getCat((int) ($this->queryParam("pack") ?? 0));
-        if(!$user || $user->isDeleted() || !$cat || $user->isServiceAccount())
-            $this->flashFail("err", "Не удалось подарить", "Пользователь или набор не существуют.");
-
-        if(!$user->canBeViewedBy($this->user->identity ?? NULL)) {
+        if(!$user || !$cat)
+            $this->flashFail("err", tr("error_when_gifting"), tr("error_user_not_exists"));
+        
+        if(!$user->canBeViewedBy($this->user->identity))
             $this->flashFail("err", tr("forbidden"), tr("forbidden_comment"));
-        }    
         
         $this->template->page = $page = (int) ($this->queryParam("p") ?? 1);
         $gifts = $cat->getGifts($page, null, $this->template->count);
@@ -78,19 +72,18 @@ final class GiftsPresenter extends OpenVKPresenter
         $user = $this->users->get((int) ($this->queryParam("user") ?? 0));
         $gift = $this->gifts->get((int) ($this->queryParam("elid") ?? 0));
         $cat  = $this->gifts->getCat((int) ($this->queryParam("pack") ?? 0));
-        if(!$user || $user->isDeleted() || !$cat || !$gift || !$cat->hasGift($gift))
-            $this->flashFail("err", "Не удалось подарить", "Не удалось подтвердить права на подарок.");
+        if(!$user || !$cat || !$gift || !$cat->hasGift($gift))
+            $this->flashFail("err", tr("error_when_gifting"), tr("error_no_rights_gifts"));
         
         if(!$gift->canUse($this->user->identity))
-            $this->flashFail("err", "Не удалось подарить", "У вас больше не осталось таких подарков.");
-
-        if(!$user->canBeViewedBy($this->user->identity ?? NULL)) {
-            $this->flashFail("err", tr("forbidden"), tr("forbidden_comment"));
-        }    
+            $this->flashFail("err", tr("error_when_gifting"), tr("error_no_more_gifts"));
         
+        if(!$user->canBeViewedBy($this->user->identity ?? NULL))
+            $this->flashFail("err", tr("forbidden"), tr("forbidden_comment"));
+
         $coinsLeft = $this->user->identity->getCoins() - $gift->getPrice();
         if($coinsLeft < 0)
-            $this->flashFail("err", "Не удалось подарить", "Недостаточно голосов.");
+            $this->flashFail("err", tr("error_when_gifting"), tr("error_no_money"));
         
         $this->template->_template = "Gifts/Confirm.xml";
         if($_SERVER["REQUEST_METHOD"] !== "POST") {
@@ -108,8 +101,8 @@ final class GiftsPresenter extends OpenVKPresenter
         $user->gift($this->user->identity, $gift, $comment, !is_null($this->postParam("anonymous")));
         $gift->used();
         
-        $this->flash("succ", "Подарок отправлен", "Вы отправили подарок <b>" . $user->getFirstName() . "</b> за " . $gift->getPrice() . " голосов.");
-        $this->redirect($user->getURL(), static::REDIRECT_TEMPORARY);
+        $this->flash("succ", tr("gift_sent"), tr("gift_sent_desc", $user->getFirstName(), $gift->getPrice()));
+        $this->redirect($user->getURL());
     }
     
     function renderStub(): void

@@ -5,12 +5,11 @@ use openvk\Web\Themes\{Themepack, Themepacks};
 use openvk\Web\Util\DateTime;
 use openvk\Web\Models\RowModel;
 use openvk\Web\Models\Entities\{Photo, Message, Correspondence, Gift, Audio};
-use openvk\Web\Models\Repositories\{Applications, Bans, Comments, Notes, Posts, Faves, Users, Clubs, Albums, Gifts, Notifications, Videos, Photos};
+use openvk\Web\Models\Repositories\{Applications, Bans, Comments, Notes, Posts,   Users, Clubs, Albums, Gifts, Notifications, Videos, Photos};
 use openvk\Web\Models\Exceptions\InvalidUserNameException;
 use Nette\Database\Table\ActiveRow;
 use Chandler\Database\DatabaseConnection;
 use Chandler\Security\User as ChandlerUser;
-use function morphos\Russian\inflectName;
 
 class User extends RowModel
 {
@@ -39,11 +38,14 @@ class User extends RowModel
         $query  = "SELECT id FROM\n" . file_get_contents(__DIR__ . "/../sql/$filename.tsql");
         $query .= "\n LIMIT " . $limit . " OFFSET " . ( ($page - 1) * $limit );
         
+        $ids = [];
         $rels = DatabaseConnection::i()->getConnection()->query($query, $id, $id);
         foreach($rels as $rel) {
             $rel = (new Users)->get($rel->id);
             if(!$rel) continue;
-            
+            if(in_array($rel->getId(), $ids)) continue;
+            $ids[] = $rel->getId();
+
             yield $rel;
         }
     }
@@ -85,17 +87,12 @@ class User extends RowModel
     {
         return (bool) $this->getRecord()->microblog;
     }
-    
-	function getMainPage(): int
+
+    function getMainPage(): int
     {
         return $this->getRecord()->main_page;
     }
-	
-	function getSearchAppear(): int
-    {
-        return $this->getRecord()->search_appear;
-    }
-	
+    
     function getChandlerGUID(): string
     {
         return $this->getRecord()->user;
@@ -114,7 +111,7 @@ class User extends RowModel
             return "/id" . $this->getId();
     }
     
-    function getAvatarUrl(string $size = "miniscule"): string
+    function getAvatarUrl(string $size = "miniscule", $avPhoto = NULL): string
     {
         $serverUrl = ovk_scheme(true) . $_SERVER["HTTP_HOST"];
         
@@ -123,7 +120,9 @@ class User extends RowModel
         else if($this->isBanned())
             return "$serverUrl/assets/packages/static/openvk/img/banned.jpg";
         
-        $avPhoto = $this->getAvatarPhoto();
+        if(!$avPhoto)
+            $avPhoto = $this->getAvatarPhoto();
+        
         if(is_null($avPhoto))
             return "$serverUrl/assets/packages/static/openvk/img/camera_200.png";
         else
@@ -153,9 +152,9 @@ class User extends RowModel
     function getFirstName(bool $pristine = false): string
     {
         $name = ($this->isDeleted() && !$this->isDeactivated() ? "DELETED" : mb_convert_case($this->getRecord()->first_name, MB_CASE_TITLE));
-        $tsn  = tr("__transNames");
+	$tsn  = tr("__transNames");
         if(( $tsn !== "@__transNames" && !empty($tsn) ) && !$pristine)
-             return mb_convert_case(transliterator_transliterate($tsn, $name), MB_CASE_TITLE);
+            return mb_convert_case(transliterator_transliterate($tsn, $name), MB_CASE_TITLE);
         else
             return $name;
     }
@@ -163,7 +162,7 @@ class User extends RowModel
     function getLastName(bool $pristine = false): string
     {
         $name = ($this->isDeleted() && !$this->isDeactivated() ? "DELETED" : mb_convert_case($this->getRecord()->last_name, MB_CASE_TITLE));
-        $tsn  = tr("__transNames");
+	$tsn  = tr("__transNames");
         if(( $tsn !== "@__transNames" && !empty($tsn) ) && !$pristine)
             return mb_convert_case(transliterator_transliterate($tsn, $name), MB_CASE_TITLE);
         else
@@ -187,17 +186,6 @@ class User extends RowModel
             $pseudo = " ($pseudo) ";
         
         return $this->getFirstName() . $pseudo . $this->getLastName();
-    }
-
-    function getMorphedName(string $case = "genitive", bool $fullName = true): string
-    {
-        $name = $fullName ? ($this->getLastName() . " " . $this->getFirstName()) : $this->getFirstName();
-        if(!preg_match("%^[А-яё\-]+$%", $name))
-            return $name; # name is probably not russian
-
-        $inflected = inflectName($name, $case, $this->isFemale() ? Gender::FEMALE : Gender::MALE);
-
-        return $inflected ?: $name;
     }
     
     function getCanonicalName(): string
@@ -243,9 +231,58 @@ class User extends RowModel
         return $this->getRecord()->alert;
     }
 
-    function getBanReason(): ?string
+    function getTextForContentBan(string $type): string
+    {
+        switch ($type) {
+            case "post":    return "за размещение от Вашего лица таких <b>записей</b>:";
+            case "photo":   return "за размещение от Вашего лица таких <b>фотографий</b>:";
+            case "video":   return "за размещение от Вашего лица таких <b>видеозаписей</b>:";
+            case "group":   return "за подозрительное вступление от Вашего лица <b>в группу:</b>";
+            case "comment": return "за размещение от Вашего лица таких <b>комментариев</b>:";
+            case "note":    return "за размещение от Вашего лица таких <b>заметок</b>:";
+            case "app":     return "за создание от Вашего имени <b>подозрительных приложений</b>.";
+            default:        return "за размещение от Вашего лица такого <b>контента</b>:";
+        }
+    }
+
+    function getRawBanReason(): ?string
     {
         return $this->getRecord()->block_reason;
+    }
+
+    function getBanReason(?string $for = null)
+    {
+        $ban = (new Bans)->get((int) $this->getRecord()->block_reason);
+        if (!$ban || $ban->isOver()) return null;
+
+        $reason = $ban->getReason();
+
+        preg_match('/\*\*content-(post|photo|video|group|comment|note|app|noSpamTemplate|user)-(\d+)\*\*$/', $reason, $matches);
+        if (sizeof($matches) === 3) {
+            $content_type = $matches[1]; $content_id = (int) $matches[2];
+            if (in_array($content_type, ["noSpamTemplate", "user"])) {
+                $reason = "Подозрительная активность";
+            } else {
+                if ($for !== "banned") {
+                    $reason = "Подозрительная активность";
+                } else {
+                    $reason = [$this->getTextForContentBan($content_type), $content_type];
+                    switch ($content_type) {
+                        case "post":    $reason[] = (new Posts)->get($content_id);        break;
+                        case "photo":   $reason[] = (new Photos)->get($content_id);       break;
+                        case "video":   $reason[] = (new Videos)->get($content_id);       break;
+                        case "group":   $reason[] = (new Clubs)->get($content_id);        break;
+                        case "comment": $reason[] = (new Comments)->get($content_id);     break;
+                        case "note":    $reason[] = (new Notes)->get($content_id);        break;
+                        case "app":     $reason[] = (new Applications)->get($content_id); break;
+                        case "user":    $reason[] = (new Users)->get($content_id);        break;
+                        default:        $reason[] = null;
+                    }
+                }
+            }
+        }
+
+        return $reason;
     }
 
     function getBanInSupportReason(): ?string
@@ -266,9 +303,9 @@ class User extends RowModel
         return $this->getRecord()->coins;
     }
 
-    function getRating(): float
+    function getRating(): int
     {
-        return OPENVK_ROOT_CONF["openvk"]["preferences"]["commerce"] ? $this->getRecord()->rating : 0;
+        return OPENVK_ROOT_CONF["openvk"]["preferences"]["commerce"] ? (int) $this->getRecord()->rating : 0;
     }
 
     function getReputation(): int
@@ -300,7 +337,7 @@ class User extends RowModel
     {
         return $this->getRecord()->marital_status;
     }
-
+    
     function getLocalizedMaritalStatus(?bool $prefix = false): string
     {
         $status = $this->getMaritalStatus();
@@ -311,7 +348,7 @@ class User extends RowModel
             if($res != ("@" . $string . "_fem"))
                 return $res; # If fem version exists, return
         }
-
+        
         return tr($string);
     }
 
@@ -330,8 +367,8 @@ class User extends RowModel
     {
         return $this->getRecord()->email_contact;
     }
-	
-	function getKICQ(): ?string
+
+    function getKICQ(): ?string
     {
         return $this->getRecord()->kicq;
     }
@@ -351,14 +388,14 @@ class User extends RowModel
         return $this->getRecord()->fav_music;
     }
 
-    function getFavoriteFilms(): ?string
-    {
-        return $this->getRecord()->fav_films;
-    }
-
     function getFavoriteGames(): ?string
     {
         return $this->getRecord()->fav_games;
+    }
+
+    function getFavoriteFilms(): ?string
+    {
+        return $this->getRecord()->fav_films;
     }
 
     function getFavoriteShows(): ?string
@@ -398,44 +435,10 @@ class User extends RowModel
         else
             return new DateTime($this->getRecord()->birthday);
     }
-	
-	function isBirthdayToday(): bool
-    {
-        if(!is_null($this->getBirthday())) {
-            $thisDay = (new DateTime(time()))->format("%m%d");
-            $usersBirthday = $this->getBirthday()->format("%m%d");
-
-            if($thisDay == $usersBirthday) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    function isBirthdayTomorrow(): bool
-    {
-        if(!is_null($this->getBirthday())) {
-            $tomorrowDay = (new DateTime(time() + DAY))->format("%m%d");
-            $usersBirthday = $this->getBirthday()->format("%m%d");
-
-            if($tomorrowDay == $usersBirthday) {
-                return true;
-            }
-        }
-
-        return false;
-    }
 
     function getBirthdayPrivacy(): int
     {
         return $this->getRecord()->birthday_privacy;
-    }
-
-    function getProfileType(): int
-    {
-        # 0 — открытый профиль, 1 — закрытый
-        return $this->getRecord()->profile_type;
     }
 
     function getAge(): ?int
@@ -453,47 +456,6 @@ class User extends RowModel
         return !is_null($this->get2faSecret());
     }
 
-    function canBeViewedBy(?User $user = NULL): bool
-    {
-        if(!is_null($user)) {
-            if($this->getId() == $user->getId()) {
-                return true;
-            }
-
-            if($user->getChandlerUser()->can("access")->model("admin")->whichBelongsTo(NULL)) {
-                return true;
-            }
-
-            if($this->getProfileType() == 0) {
-                return true;
-            } else {
-                if($user->getSubscriptionStatus($this) == User::SUBSCRIPTION_MUTUAL) {
-                    return true;
-                } else {
-                    return false;
-                }
-            }
-
-        } else {
-            if($this->getProfileType() == 0) {
-                if($this->getPrivacySetting("page.read") == 3) {
-                    return true;
-                } else {
-                    return false;
-                }
-            } else {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    function isClosed()
-    {
-        return (bool) $this->getProfileType();
-    }
-
     function updateNotificationOffset(): void
     {
         $this->stateChanges("notification_offset", time());
@@ -505,8 +467,8 @@ class User extends RowModel
             "length"   => 1,
             "mappings" => [
                 "photos",
+                "audios",
                 "videos",
-				"audios",
                 "messages",
                 "notes",
                 "groups",
@@ -528,26 +490,24 @@ class User extends RowModel
                 "groups.read",
                 "photos.read",
                 "videos.read",
-				"audios.read",
                 "notes.read",
                 "friends.read",
                 "friends.add",
                 "wall.write",
                 "messages.write",
+                "audios.read",
             ],
         ])->get($id);
     }
 
     function getPrivacyPermission(string $permission, ?User $user = NULL): bool
     {
-        if ($this->isServiceAccount() && $permission !== "page.read" && ($user !== NULL && $user->getId() !== $this->getId())) return false;
-
         $permStatus = $this->getPrivacySetting($permission);
         if(!$user)
             return $permStatus === User::PRIVACY_EVERYONE;
         else if($user->getId() === $this->getId())
             return true;
-        
+
         if($permission != "messages.write" && !$this->canBeViewedBy($user))
             return false;
 
@@ -626,28 +586,6 @@ class User extends RowModel
     {
         return $this->_abstractRelationGenerator("get-followers", $page, $limit);
     }
-	
-	function getBirthdays(): \Traversable
-    {
-        $friends = $this->getFriends();
-
-        foreach($friends as $friend) {
-            if($friend->isBirthdayToday()) {
-                yield $friend;
-            }
-        }
-    }
-
-    function getBirthdaysTomorrow(): \Traversable
-    {
-        $friends = $this->getFriends();
-
-        foreach($friends as $friend) {
-            if($friend->isBirthdayTomorrow()) {
-                yield $friend;
-            }
-        }
-    }
 
     function getFollowersCount(): int
     {
@@ -681,9 +619,9 @@ class User extends RowModel
 
     function getClubs(int $page = 1, bool $admin = false, int $count = OPENVK_DEFAULT_PER_PAGE, bool $offset = false): \Traversable
     {
-		if(!$offset)
+        if(!$offset)
             $page = ($page - 1) * $count;
-		
+
         if($admin) {
             $id     = $this->getId();
             $query  = "SELECT `id` FROM `groups` WHERE `owner` = ? UNION SELECT `club` as `id` FROM `group_coadmins` WHERE `user` = ?";
@@ -870,12 +808,12 @@ class User extends RowModel
 
     function isFemale(): bool
     {
-        return (bool) $this->getRecord()->sex;
+        return (bool) $this->getRecord()->sex == 1;
     }
 
     function isNeutral(): bool
     {
-        return (bool) $this->getRecord()->sex == 2;
+        return (bool) $this->getRecord()->sex;
     }
 
     function isVerified(): bool
@@ -897,8 +835,8 @@ class User extends RowModel
     {
         return time() - $this->getRecord()->online <= 300;
     }
-	
-	function getOnlinePlatform(bool $forAPI = false): ?string
+
+    function getOnlinePlatform(bool $forAPI = false): ?string
     {
         $platform = $this->getRecord()->client_name;
         if($forAPI) {
@@ -912,7 +850,7 @@ class User extends RowModel
                 case 'openvk_legacy_ios':
                     return 'iphone';
                     break;
-
+                
                 case 'vika_touch': // кика хохотач ахахахаххахахахахах
                 case 'vk4me':
                     return 'mobile';
@@ -921,7 +859,7 @@ class User extends RowModel
                 case NULL:
                     return NULL;
                     break;
-
+                
                 default:
                     return 'api';
                     break;
@@ -977,7 +915,7 @@ class User extends RowModel
         ]);
     }
 
-    function ban(string $reason, bool $deleteSubscriptions = true, ?int $unban_time = NULL): void
+    function ban(string $reason, bool $deleteSubscriptions = true, $unban_time = NULL, ?int $initiator = NULL): void
     {
         if($deleteSubscriptions) {
             $subs = DatabaseConnection::i()->getContext()->table("subscriptions");
@@ -990,12 +928,37 @@ class User extends RowModel
             $subs->delete();
         }
 
-        $this->setBlock_Reason($reason);
-		$this->setUnblock_time($unban_time);
+        $iat = time();
+        $ban = new Ban;
+        $ban->setUser($this->getId());
+        $ban->setReason($reason);
+        $ban->setInitiator($initiator);
+        $ban->setIat($iat);
+        $ban->setExp($unban_time !== "permanent" ? $unban_time : 0);
+        $ban->setTime($unban_time === "permanent" ? 0 : ($unban_time ? ($unban_time - $iat) : 0));
+        $ban->save();
+
+        $this->setBlock_Reason($ban->getId());
+        // $this->setUnblock_time($unban_time);
         $this->save();
     }
-	
-	function deactivate(?string $reason): void
+
+    function unban(int $removed_by): void
+    {
+        $ban = (new Bans)->get((int) $this->getRawBanReason());
+        if (!$ban || $ban->isOver())
+            return;
+
+        $ban->setRemoved_Manually(true);
+        $ban->setRemoved_By($removed_by);
+        $ban->save();
+
+        $this->setBlock_Reason(NULL);
+        // $user->setUnblock_time(NULL);
+        $this->save();
+    }
+
+    function deactivate(?string $reason): void
     {
         $this->setDeleted(1);
         $this->setDeact_Date(time() + (MONTH * 7));
@@ -1015,8 +978,7 @@ class User extends RowModel
     {
         return new DateTime($this->getRecord()->deact_date);
     }
-
-
+    
     function verifyNumber(string $code): bool
     {
         $ver = $this->getPendingPhoneVerification();
@@ -1075,12 +1037,12 @@ class User extends RowModel
                 "groups.read",
                 "photos.read",
                 "videos.read",
-				"audios.read",
                 "notes.read",
                 "friends.read",
                 "friends.add",
                 "wall.write",
                 "messages.write",
+                "audios.read",
             ],
         ])->set($id, $status)->toInteger());
     }
@@ -1091,15 +1053,15 @@ class User extends RowModel
             "length"   => 1,
             "mappings" => [
                 "photos",
+                "audios",
                 "videos",
-				"audios",
                 "messages",
                 "notes",
                 "groups",
                 "news",
                 "links",
                 "poster",
-                "apps"
+                "apps",
             ],
         ])->set($id, (int) $status)->toInteger();
 
@@ -1121,10 +1083,10 @@ class User extends RowModel
             $pClub = DatabaseConnection::i()->getContext()->table("groups")->where("shortcode", $code)->fetch();
                 if(!is_null($pClub))
                     return false;
-				
-			$pAlias = DatabaseConnection::i()->getContext()->table("aliases")->where("shortcode", $code)->fetch();
+
+            $pAlias = DatabaseConnection::i()->getContext()->table("aliases")->where("shortcode", $code)->fetch();
                 if(!is_null($pAlias))
-                    return false;	
+                    return false;
         }
 
         $this->stateChanges("shortcode", $code);
@@ -1203,8 +1165,8 @@ class User extends RowModel
         else
             return FALSE;
     }
-	
-	function isDeactivated(): bool
+
+    function isDeactivated(): bool
     {
         if($this->getDeactivationDate()->timestamp() > time())
             return TRUE;
@@ -1239,15 +1201,24 @@ class User extends RowModel
 		return $this->getRecord()->website;
 	}
 
-    # ребята, приключений час, ждут давно чужие земли нас
+    # ты устрица
     function isActivated(): bool
     {
         return (bool) $this->getRecord()->activated;
     }
-	
-	function getUnbanTime(): ?string
+
+    function isDead(): bool
     {
-        return !is_null($this->getRecord()->unblock_time) ? date('d.m.Y', $this->getRecord()->unblock_time) : NULL;
+        return $this->onlineStatus() == 2;
+    }
+
+    function getUnbanTime(): ?string
+    {
+        $ban = (new Bans)->get((int) $this->getRecord()->block_reason);
+        if (!$ban || $ban->isOver() || $ban->isPermanent()) return null;
+        if ($this->canUnbanThemself()) return tr("today");
+
+        return date('d.m.Y', $ban->getEndTime());
     }
 
     function canUnbanThemself(): bool
@@ -1255,64 +1226,100 @@ class User extends RowModel
         if (!$this->isBanned())
             return false;
 
-        if ($this->getRecord()->unblock_time > time() || $this->getRecord()->unblock_time == 0)
-            return false;
+        $ban = (new Bans)->get((int) $this->getRecord()->block_reason);
+        if (!$ban || $ban->isOver() || $ban->isPermanent()) return false;
+
+        return $ban->getEndTime() <= time() && !$ban->isPermanent();
+    }
+
+    function getNewBanTime()
+    {
+        $bans = iterator_to_array((new Bans)->getByUser($this->getid()));
+        if (!$bans || count($bans) === 0)
+            return 0;
+
+        $last_ban = end($bans);
+        if (!$last_ban) return 0;
+
+        if ($last_ban->isPermanent()) return "permanent";
+
+        $values = [0, 3600, 7200, 86400, 172800, 604800, 1209600, 3024000, 9072000];
+        $response = 0;
+        $i = 0;
+
+        foreach ($values as $value) {
+            $i++;
+            if ($last_ban->getTime() === 0 && $value === 0) continue;
+            if ($last_ban->getTime() < $value) {
+                $response = $value;
+                break;
+            } else if ($last_ban->getTime() >= $value) {
+                if ($i < count($values)) continue;
+                $response = "permanent";
+                break;
+            }
+        }
+        return $response;
+    }
+    
+    function getProfileType(): int
+    {
+        # 0 — открытый профиль, 1 — закрытый
+        return $this->getRecord()->profile_type;
+    }
+
+    function canBeViewedBy(?User $user = NULL): bool
+    {
+        if(!is_null($user)) {
+            if($this->getId() == $user->getId()) {
+                return true;
+            }
+
+            if($user->getChandlerUser()->can("access")->model("admin")->whichBelongsTo(NULL)) {
+                return true;
+            }
+
+            if($this->getProfileType() == 0) {
+                return true;
+            } else {
+                if($user->getSubscriptionStatus($this) == User::SUBSCRIPTION_MUTUAL) {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+
+        } else {
+            if($this->getProfileType() == 0) {
+                if($this->getPrivacySetting("page.read") == 3) {
+                    return true;
+                } else {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
 
         return true;
     }
 
-    function getServiceAccountNotify(): ?string
+    function isClosed(): bool
     {
-        return $this->getRecord()->service_account_notify;
+        return (bool) $this->getProfileType();
     }
 
-    function isServiceAccount(): bool
+    function isHideFromGlobalFeedEnabled(): bool
     {
-        return !is_null($this->getServiceAccountNotify());
+        return $this->isClosed();
     }
-	
-	function getListsByFriend(User $rely, User $friend) 
+    
+    function getRealId()
     {
-        $frs = $this->getRecord()->related("friendslists_relations.friend")->page(1, OPENVK_ROOT_CONF["openvk"]["preferences"]["maxFriendsLists"]);
-
-        foreach($frs as $friend) {
-            $friendg = $friend->ref("friendslists", "friendslist");
-
-            if(!$friendg) continue;
-
-            $flist = new FriendsList($friendg);
-
-            if($flist->getOwner()->getId() != $rely->getId())
-                continue;
-
-            yield $flist;
-        }
-    }
-	
-	function getUsersLists(User $rely) 
-    {
-        $frs = $this->getRecord()->related("friendslists_relations.friend")->page(1, OPENVK_ROOT_CONF["openvk"]["preferences"]["maxFriendsLists"]);
-
-        foreach($frs as $friend) {
-            $friendg = $friend->ref("friendslists", "friendslist");
-
-            if(!$friendg) continue;
-
-            $flist = new FriendsList($friendg);
-
-            if($flist->getOwner()->getId() != $rely->getId())
-                continue;
-
-            yield $flist;
-        }
+        return $this->getId();
     }
 
-    function getPaginatorType()
-    {
-        return $this->getRecord()->paginator_type;
-    }
-	
-	function toVkApiStruct(?User $user = NULL): object
+    function toVkApiStruct(?User $user = NULL, string $fields = ''): object
     {
         $res = (object) [];
 
@@ -1320,56 +1327,68 @@ class User extends RowModel
         $res->first_name = $this->getFirstName();
         $res->last_name = $this->getLastName();
         $res->deactivated = $this->isDeactivated();
-        $res->photo_50    = $this->getAvatarURL();
-        $res->photo_100   = $this->getAvatarURL("tiny");
-        $res->photo_200   = $this->getAvatarURL("normal");
-        $res->photo_id    = !is_null($this->getAvatarPhoto()) ? $this->getAvatarPhoto()->getPrettyId() : NULL;
-        $res->is_closed   = (bool)$this->getProfileType();
+        $res->is_closed   = $this->isClosed();
 
-        if(!is_null($user)) {
+        if(!is_null($user))
             $res->can_access_closed  = (bool)$this->canBeViewedBy($user);
-        }
+
+        if(!is_array($fields))
+            $fields = explode(',', $fields);
         
-        # TODO: Perenesti syuda vsyo ostalnoyie
+        $avatar_photo  = $this->getAvatarPhoto();
+        foreach($fields as $field) {
+            switch($field) {
+                case 'is_dead':
+                    $res->is_dead = $this->isDead();
+                    break;
+                case 'verified':
+                    $res->verified = (int)$this->isVerified();
+                    break;
+                case 'sex':
+                    $res->sex = $this->isFemale() ? 1 : ($this->isNeutral() ? 0 : 2);
+                    break;
+                case 'photo_50':
+                    $res->photo_50 = $this->getAvatarUrl('miniscule', $avatar_photo);
+                    break;
+                case 'photo_100':
+                    $res->photo_100 = $this->getAvatarUrl('tiny', $avatar_photo);
+                    break;
+                case 'photo_200':
+                    $res->photo_200 = $this->getAvatarUrl('normal', $avatar_photo);
+                    break;
+                case 'photo_max':
+                    $res->photo_max = $this->getAvatarUrl('original', $avatar_photo);
+                    break;
+                case 'photo_id':
+                    $res->photo_id = $avatar_photo ? $avatar_photo->getPrettyId() : NULL;
+                    break;
+                case 'background':
+                    $res->background = $this->getBackDropPictureURLs();
+                    break;
+                case 'reg_date':
+                    $res->reg_date = $this->getRegistrationTime()->timestamp();
+                    break;
+                case 'nickname':
+                    $res->nickname = $this->getPseudo();
+                    break;
+                case 'rating':
+                    $res->rating = $this->getRating();
+                    break;
+                case 'status':
+                    $res->status = $this->getStatus();
+                    break;
+                case 'screen_name':
+                    $res->screen_name = $this->getShortCode() ?? "id".$this->getId();
+                    break;
+                case 'real_id':
+                    $res->real_id = $this->getRealId();
+                    break;
+            }
+        }
 
         return $res;
     }
-
-    function getRealId()
-    {
-        return $this->getId();
-    }
-
-    function getIgnoredSources(int $page = 1, int $perPage = 10, bool $onlyIds = false)
-    {
-        $sources = DatabaseConnection::i()->getContext()->table("ignored_sources")->where("owner", $this->getId())->page($page, $perPage);
-        $arr = [];
-
-        foreach($sources as $source) {
-            $ignoredSource = (int)$source->ignored_source;
-
-            if($ignoredSource > 0)
-                $ignoredSourceModel = (new Users)->get($ignoredSource);
-            else
-                $ignoredSourceModel = (new Clubs)->get(abs($ignoredSource));
-
-            if(!$ignoredSourceModel)
-                continue;
-
-            if(!$onlyIds)
-                $arr[] = $ignoredSourceModel;
-            else
-                $arr[] = $ignoredSourceModel->getRealId();
-        }
-
-        return $arr;
-    }
-
-    function getIgnoredSourcesCount()
-    {
-        return sizeof(DatabaseConnection::i()->getContext()->table("ignored_sources")->where("owner", $this->getId()));
-    }
-
+    
     function getAudiosCollectionSize()
     {
         return (new \openvk\Web\Models\Repositories\Audios)->getUserCollectionSize($this);
@@ -1394,7 +1413,7 @@ class User extends RowModel
     
             $entityIds = knuth_shuffle($entityIds, $shuffleSeed);
         }
-
+        
         $entityIds = array_slice($entityIds, 0, 10);
 
         $returnArr = [];
@@ -1409,12 +1428,39 @@ class User extends RowModel
         return $returnArr;
     }
 
-    function isHideFromGlobalFeedEnabled(): bool
+    function getIgnoredSources(int $offset = 0, int $limit = 10, bool $onlyIds = false)
     {
-        return $this->isClosed();
-    }
+        $sources = DatabaseConnection::i()->getContext()->table("ignored_sources")->where("owner", $this->getId())->limit($limit, $offset)->order('id DESC');
+        $output_array = [];
+
+        foreach($sources as $source) {
+            if($onlyIds) {
+                $output_array[] = (int)$source->source;
+            } else {
+                $ignored_source_model = NULL;
+                $ignored_source_id = (int)$source->source;
+
+                if($ignored_source_id > 0)
+                    $ignored_source_model = (new Users)->get($ignored_source_id);
+                else
+                    $ignored_source_model = (new Clubs)->get(abs($ignored_source_id));
     
-	use Traits\TBackDrops;
+                if(!$ignored_source_model)
+                    continue;
+
+                $output_array[] = $ignored_source_model;
+            }
+        }
+
+        return $output_array;
+    }
+
+    function getIgnoredSourcesCount()
+    {
+        return DatabaseConnection::i()->getContext()->table("ignored_sources")->where("owner", $this->getId())->count();
+    }
+
+    use Traits\TBackDrops;
     use Traits\TSubscribable;
     use Traits\TAudioStatuses;
     use Traits\TIgnorable;
