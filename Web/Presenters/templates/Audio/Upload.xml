@@ -149,55 +149,55 @@
             }
 
             appendAudioFrame(audio_index) {
-                const audio_element = this.files_list[audio_index]
-                if(!audio_element) {
-                    return
-                
-                }
-                const template = u(`
-                <div class='upload_container_element' data-index="${audio_index}">
-                    <div class='upload_container_name'>
-                        <span>${ovk_proc_strtr(escapeHtml(audio_element.file.name), 63)}</span>
-                        <div id="small_remove_button"></div>
-                    </div>
-                    <table cellspacing="7" cellpadding="0" border="0" align="center">
-                        <tbody>
-                            <tr>
-                                <td width="120" valign="top"><span class="nobold">${tr('performer')}:</span></td>
-                                <td><input value='${audio_element.info.performer}' name="performer" type="text" autocomplete="off" maxlength="80" /></td>
-                            </tr>
-                            <tr>
-                                <td width="120" valign="top"><span class="nobold">${tr('audio_name')}:</span></td>
-                                <td><input type="text" value='${audio_element.info.name}' name="name" autocomplete="off" maxlength="80" /></td>
-                            </tr>
-                            <tr>
-                                <td width="120" valign="top"><span class="nobold">${tr('genre')}:</span></td>
-                                <td>
-                                    <select name="genre"></select>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td width="120" valign="top"><span class="nobold">${tr('lyrics')}:</span></td>
-                                <td><textarea name="lyrics" style="resize: vertical;max-height: 300px;">${audio_element.info.lyrics}</textarea></td>
-                            </tr>
-                            <tr>
-                                <td width="120" valign="top"></td>
-                                <td>
-                                    <label style='display:block'><input type="checkbox" name="explicit">${tr('audios_explicit')}</label>
-                                    <label><input type="checkbox" name="unlisted">${tr('audios_unlisted')}</label>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                `)
-                window.openvk.audio_genres.forEach(genre => {
-                    template.find('select').append(`
-                        <option ${genre == audio_element.info.genre ? 'selected': ''} value='${genre}'>${genre}</option>
-                    `)
-                })
-                u('#lastStep #lastStepContainers').append(template)
-            }
+    const audio_element = this.files_list[audio_index];
+    if (!audio_element) {
+        return;
+    }
+    const template = u(`
+        <div class='upload_container_element' data-index="${audio_index}">
+            <div class='upload_container_name'>
+                <span>${escapeHtml(ovk_proc_strtr(audio_element.file.name, 63))}</span>
+                <div id="small_remove_button"></div>
+            </div>
+            <table cellspacing="7" cellpadding="0" border="0" align="center">
+                <tbody>
+                    <tr>
+                        <td width="120" valign="top"><span class="nobold">${tr('performer')}:</span></td>
+                        <td><input value='${escapeHtml(audio_element.info.performer)}' name="performer" type="text" autocomplete="off" maxlength="80" /></td>
+                    </tr>
+                    <tr>
+                        <td width="120" valign="top"><span class="nobold">${tr('audio_name')}:</span></td>
+                        <td><input type="text" value='${escapeHtml(audio_element.info.name)}' name="name" autocomplete="off" maxlength="80" /></td>
+                    </tr>
+                    <tr>
+                        <td width="120" valign="top"><span class="nobold">${tr('genre')}:</span></td>
+                        <td>
+                            <select name="genre"></select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td width="120" valign="top"><span class="nobold">${tr('lyrics')}:</span></td>
+                        <td><textarea name="lyrics" style="resize: vertical;max-height: 300px;">${escapeHtml(audio_element.info.lyrics)}</textarea></td>
+                    </tr>
+                    <tr>
+                        <td width="120" valign="top"></td>
+                        <td>
+                            <label style='display:block'><input type="checkbox" name="explicit">${tr('audios_explicit')}</label>
+                            <label><input type="checkbox" name="unlisted">${tr('audios_unlisted')}</label>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    `);
+
+    window.openvk.audio_genres.forEach(genre => {
+        template.find('select').append(`
+            <option ${genre == audio_element.info.genre ? 'selected': ''} value='${escapeHtml(genre)}'>${escapeHtml(genre)}</option>
+        `);
+    });
+    u('#lastStep #lastStepContainers').append(template);
+}
         }
 
         u(`#audio_upload input`).on('change', (e) => {

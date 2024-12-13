@@ -659,7 +659,7 @@ window.player = new class {
         navigator.mediaSession.metadata = new MediaMetadata({
             title: escapeHtml(cur.name),
             artist: escapeHtml(cur.performer),
-            album: album == null ? "OpenVK Audios" : escapeHtml(album.querySelector(".playlistInfo h4").innerHTML),
+            album: album == null ? "VepurOVK Музыка" : escapeHtml(album.querySelector(".playlistInfo h4").innerHTML),
             artwork: [{ src: album == null ? "/assets/packages/static/openvk/img/song.jpg" : album.querySelector(".playlistCover img").src }],
         })
     }
@@ -1303,33 +1303,33 @@ u(document).on("click", ".musicIcon.edit-icon", (e) => {
     const lyrics = e.target.dataset.lyrics
     
     MessageBox(tr("edit_audio"), `
-        <div>
-            ${tr("performer")}
-            <input name="performer" maxlength="256" type="text" value="${performer}">
-        </div>
+    <div>
+        ${tr("performer")}
+        <input name="performer" maxlength="256" type="text" value="${escapeHtml(performer)}">
+    </div>
 
-        <div style="margin-top: 11px">
-            ${tr("audio_name")}
-            <input name="name" maxlength="256" type="text" value="${name}">
-        </div>
+    <div style="margin-top: 11px">
+        ${tr("audio_name")}
+        <input name="name" maxlength="256" type="text" value="${escapeHtml(name)}">
+    </div>
 
-        <div style="margin-top: 11px">
-            ${tr("genre")}
-            <select name="genre"></select>
-        </div>
+    <div style="margin-top: 11px">
+        ${tr("genre")}
+        <select name="genre"></select>
+    </div>
 
-        <div style="margin-top: 11px">
-            ${tr("lyrics")}
-            <textarea name="lyrics" maxlength="5000" style="max-height: 200px;">${lyrics ?? ""}</textarea>
-        </div>
+    <div style="margin-top: 11px">
+        ${tr("lyrics")}
+        <textarea name="lyrics" maxlength="5000" style="max-height: 200px;">${escapeHtml(lyrics ?? "")}</textarea>
+    </div>
 
-        <div style="margin-top: 11px">
-            <label><input type="checkbox" name="explicit" ${e.currentTarget.dataset.explicit == 1 ? "checked" : ""}>${tr("audios_explicit")}</label><br>
-            <label><input type="checkbox" name="searchable" ${e.currentTarget.dataset.searchable == 1 ? "checked" : ""}>${tr("searchable")}</label>
-            <hr>
-            <a id="_fullyDeleteAudio">${tr("fully_delete_audio")}</a>
-        </div>
-    `, [tr("save"), tr("cancel")], [
+    <div style="margin-top: 11px">
+        <label><input type="checkbox" name="explicit" ${e.currentTarget.dataset.explicit == 1 ? "checked" : ""}>${tr("audios_explicit")}</label><br>
+        <label><input type="checkbox" name="searchable" ${e.currentTarget.dataset.searchable == 1 ? "checked" : ""}>${tr("searchable")}</label>
+        <hr>
+        <a id="_fullyDeleteAudio">${tr("fully_delete_audio")}</a>
+    </div>
+`, [tr("save"), tr("cancel")], [
         function() {
             const t_name   = $(".ovk-diag-body input[name=name]").val();
             const t_perf   = $(".ovk-diag-body input[name=performer]").val();
