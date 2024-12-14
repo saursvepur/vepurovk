@@ -234,6 +234,10 @@ window.router = new class {
 }
 
 u(document).on('click', 'a', async (e) => {
+    if(e.defaultPrevented) {
+        return
+    }
+    
     const target = u(e.target).closest('a')
     const dom_url = target.attr('href')
     const id = target.attr('id')
@@ -241,7 +245,7 @@ u(document).on('click', 'a', async (e) => {
 
     if(id) {
         if(['act_tab_a', 'ki', 'used', '_pinGroup', 'profile_link', 'minilink-friends', 'minilink-albums', 'minilink-messenger', 'minilink-groups', 'minilink-notifications'].indexOf(id) == -1) {
-            console.log('AJAX | Вызываю ссылку.')
+            console.log('AJAX | Skipping cuz maybe its function call link.')
             return
         }
     }
@@ -252,22 +256,22 @@ u(document).on('click', 'a', async (e) => {
     }*/
 
     if(target.attr('rel') == 'nofollow') {
-        console.log('AJAX | Пропущено, потому что это nofollow')
+        console.log('AJAX | Skipped because its nofollow')
         return
     }
 
     if(target.nodes[0].hasAttribute('download')) {
-        console.log('AJAX | пропуск из-за скачивания')
+        console.log('AJAX | Skipped because its download')
         return
     }
 
     if(!dom_url || dom_url == '#' || dom_url.indexOf('javascript:') != -1) {
-        console.log('AJAX | Пропущено, так как из-за вызова функции')
+        console.log('AJAX | Skipped because its anchor or function call')
         return
     }
 
     if(target.attr('target') == '_blank') {
-        console.log('AJAX | галина _blanka.')
+        console.log('AJAX | Skipping because its _blank.')
         return
     }
 
@@ -282,13 +286,17 @@ u(document).on('click', 'a', async (e) => {
 
     e.preventDefault()
 
-    console.log(`AJAX | Перехожу по ссылке ${url}`)
+    console.log(`AJAX | Going to URL ${url}`)
     await window.router.route({
         url: url,
     })
 })
 
 u(document).on('submit', 'form', async (e) => {
+    if(e.defaultPrevented) {
+        return
+    }
+
     if(u('#ajloader').hasClass('shown')) {
         e.preventDefault()
         return

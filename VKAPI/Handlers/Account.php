@@ -7,19 +7,32 @@ final class Account extends VKAPIRequestHandler
     function getProfileInfo(): object
     {
         $this->requireUser();
-
-        return (object) [
-            "first_name"       => $this->getUser()->getFirstName(),
-            "id"               => $this->getUser()->getId(),
-            "last_name"        => $this->getUser()->getLastName(),
-            "home_town"        => $this->getUser()->getHometown(),
-            "status"           => $this->getUser()->getStatus(),
-            "bdate"            => is_null($this->getUser()->getBirthday()) ? '01.01.1970' : $this->getUser()->getBirthday()->format('%e.%m.%Y'),
-            "bdate_visibility" => $this->getUser()->getBirthdayPrivacy(),
+        $user = $this->getUser();
+        $return_object = (object) [
+            "first_name"       => $user->getFirstName(),
+            "photo_200"        => $user->getAvatarURL("normal"),
+            "nickname"         => $user->getPseudo(),
+            "is_service_account" => false,
+            "id"               => $user->getId(),
+            "is_verified"      => $user->isVerified(),
+            "verification_status" => $user->isVerified() ? 'verified' : 'unverified',
+            "last_name"        => $user->getLastName(),
+            "home_town"        => $user->getHometown(),
+            "status"           => $user->getStatus(),
+            "bdate"            => is_null($user->getBirthday()) ? '01.01.1970' : $user->getBirthday()->format('%e.%m.%Y'),
+            "bdate_visibility" => $user->getBirthdayPrivacy(),
             "phone"            => "+420 ** *** 228",                       # TODO
-            "relation"         => $this->getUser()->getMaritalStatus(),
-            "sex"              => $this->getUser()->isFemale() ? 1 : 2
+            "relation"         => $user->getMaritalStatus(),
+            "screen_name"      => $user->getShortCode(),
+            "sex"              => $user->isFemale() ? 1 : 2,
+            #"email"            => $user->getEmail(),
         ];
+
+        $audio_status = $user->getCurrentAudioStatus();
+        if(!is_null($audio_status)) 
+            $return_object->audio_status = $audio_status->toVkApiStruct($user);
+
+        return $return_object;
     }
 
     function getInfo(): object
@@ -150,5 +163,123 @@ final class Account extends VKAPIRequestHandler
         }
 
         return (object) $output;
+    }
+
+    function getBalance(): object
+    {
+        $this->requireUser();
+        if(!OPENVK_ROOT_CONF['openvk']['preferences']['commerce'])
+            $this->fail(105, "Commerce is disabled on this instance");
+        
+        return (object) ['votes' => $this->getUser()->getCoins()];
+    }
+
+    function getOvkSettings(): object
+    {
+        $this->requireUser();
+        $user = $this->getUser();
+
+        $settings_list = (object)[
+            'avatar_style' => $user->getStyleAvatar(),
+            'style'        => $user->getStyle(),
+            'show_rating'  => !$user->prefersNotToSeeRating(),
+            'nsfw_tolerance' => $user->getNsfwTolerance(),
+            'post_view'    => $user->hasMicroblogEnabled() ? 'microblog' : 'old',
+            'main_page'    => $user->getMainPage() == 0 ? 'my_page' : 'news',
+        ];
+
+        return $settings_list;
+    }
+
+    function sendVotes(int $receiver, int $value, string $message = ""): object
+    {
+        $this->requireUser();
+        $this->willExecuteWriteAction();
+
+        if(!OPENVK_ROOT_CONF["openvk"]["preferences"]["commerce"])
+            $this->fail(-105, "Commerce is disabled on this instance");
+
+        if($receiver < 0)
+            $this->fail(-248, "Invalid receiver id");
+
+        if($value < 1)
+            $this->fail(-248, "Invalid value");
+
+        if(iconv_strlen($message) > 255)
+            $this->fail(-249, "Message is too long");
+
+        if($this->getUser()->getCoins() < $value)
+            $this->fail(-252, "Not enough votes");
+
+        $receiver_entity = (new \openvk\Web\Models\Repositories\Users)->get($receiver);
+        if(!$receiver_entity || $receiver_entity->isDeleted())
+            $this->fail(-250, "Invalid receiver");
+
+        if($receiver_entity->getId() === $this->getUser()->getId())
+            $this->fail(-251, "Can't transfer votes to yourself");
+
+        $this->getUser()->setCoins($this->getUser()->getCoins() - $value);
+        $this->getUser()->save();
+
+        $receiver_entity->setCoins($receiver_entity->getCoins() + $value);
+        $receiver_entity->save();
+
+        (new \openvk\Web\Models\Entities\Notifications\CoinsTransferNotification($receiver_entity, $this->getUser(), $value, $message))->emit();
+
+        return (object) ['votes' => $this->getUser()->getCoins()];
+    }
+
+    function ban(int $owner_id): int
+    {
+        $this->requireUser();
+        $this->willExecuteWriteAction();
+        
+        if($owner_id < 0)
+            return 1;
+        if($owner_id == $this->getUser()->getId())
+            $this->fail(15, "Access denied: cannot blacklist yourself");
+        $config_limit = OPENVK_ROOT_CONF['openvk']['preferences']['blacklists']['limit'] ?? 100;
+        $user_blocks  = $this->getUser()->getBlacklistSize();
+        if(($user_blocks + 1) > $config_limit)
+            $this->fail(-7856, "Blacklist limit exceeded");
+        $entity = get_entity_by_id($owner_id);
+        if(!$entity || $entity->isDeleted())
+            return 0;
+        if($entity->isBlacklistedBy($this->getUser()))
+            return 1;
+        $this->getUser()->addToBlacklist($entity);
+        return 1;
+    }
+    function unban(int $owner_id): int
+    {
+        $this->requireUser();
+        $this->willExecuteWriteAction();
+        
+        if($owner_id < 0)
+            return 1;
+        if($owner_id == $this->getUser()->getId())
+            return 1;
+        $entity = get_entity_by_id($owner_id);
+        if(!$entity || $entity->isDeleted())
+            return 0;
+        if(!$entity->isBlacklistedBy($this->getUser()))
+            return 1;
+        $this->getUser()->removeFromBlacklist($entity);
+        return 1;
+    }
+    function getBanned(int $offset = 0, int $count = 100, string $fields = ""): object
+    {
+        $this->requireUser();
+        $result = (object)[
+            'count' => $this->getUser()->getBlacklistSize(),
+            'items' => [],
+        ];
+        $banned = $this->getUser()->getBlacklist($offset, $count);
+        foreach($banned as $ban) {
+            if(!$ban) continue;
+            $result->items[] = $ban->toVkApiStruct($this->getUser(), $fields);
+        }
+        
+        return $result;
     }
 }
